@@ -2,6 +2,8 @@ package internal
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
 	"regexp"
 	"strings"
 
@@ -59,33 +61,65 @@ func (m *Manager) confirmedToExecFn(command string, prompt string, edit bool) (b
 	case "y", "yes", "ok", "sure":
 		return true, command
 	case "e", "edit":
-		// Allow user to edit the command using readline for better editing experience
-		editConfig := &readline.Config{
-			Prompt:          "Edit command: ",
-			InterruptPrompt: "^C",
-			EOFPrompt:       "exit",
+		// Use external editor (Git-like approach)
+		editor := os.Getenv("EDITOR")
+		if editor == "" {
+			editor = os.Getenv("VISUAL")
 		}
-
-		editRl, editErr := readline.NewEx(editConfig)
-		if editErr != nil {
-			fmt.Printf("Error initializing readline for edit: %v\n", editErr)
-			return false, ""
-		}
-		defer func() { _ = editRl.Close() }()
-
-		// Use ReadlineWithDefault to prefill the command
-		editedCommand, editErr := editRl.ReadlineWithDefault(command)
-		if editErr != nil {
-			if editErr == readline.ErrInterrupt {
-				m.Status = ""
-				return false, ""
+		if editor == "" {
+			// Fall back to common editors
+			editors := []string{"vim", "vi", "nano", "emacs"}
+			for _, e := range editors {
+				if _, err := exec.LookPath(e); err == nil {
+					editor = e
+					break
+				}
 			}
+		}
 
-			fmt.Printf("Error reading edited command: %v\n", editErr)
+		if editor == "" {
+			fmt.Println("Error: No editor found. Please set the EDITOR environment variable.")
 			return false, ""
 		}
 
-		editedCommand = strings.TrimSpace(editedCommand)
+		// Create a temporary file for editing
+		tmpFile, err := os.CreateTemp("", "tmuxai-edit-*.sh")
+		if err != nil {
+			fmt.Printf("Error creating temporary file: %v\n", err)
+			return false, ""
+		}
+		defer func() { _ = os.Remove(tmpFile.Name()) }()
+
+		// Write the command to the temporary file
+		if _, err := tmpFile.WriteString(command); err != nil {
+			fmt.Printf("Error writing to temporary file: %v\n", err)
+			_ = tmpFile.Close()
+			return false, ""
+		}
+		if err := tmpFile.Close(); err != nil {
+			fmt.Printf("Error closing temporary file: %v\n", err)
+			return false, ""
+		}
+
+		// Open the editor
+		cmd := exec.Command(editor, tmpFile.Name())
+		cmd.Stdin = os.Stdin
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			fmt.Printf("Error running editor: %v\n", err)
+			return false, ""
+		}
+
+		// Read the edited command
+		editedBytes, err := os.ReadFile(tmpFile.Name())
+		if err != nil {
+			fmt.Printf("Error reading edited command: %v\n", err)
+			return false, ""
+		}
+
+		editedCommand := strings.TrimSpace(string(editedBytes))
 		if editedCommand != "" {
 			return true, editedCommand
 		} else {
