@@ -119,9 +119,9 @@ func (m *Manager) GetConfig() *config.Config {
 
 // getPrompt returns the prompt string with color
 func (m *Manager) GetPrompt() string {
-	tmuxaiColor := color.New(color.BgGreen, color.FgBlack, color.Bold)
-	stateColor := color.New(color.BgGreen, color.FgBlack, color.Bold)
-	arrowColor := color.New(color.FgGreen)
+	tmuxaiColor := color.New(color.BgGreen, color.FgBlack)
+	stateColor := color.New(color.BgGreen, color.FgBlack)
+	arrowColor := color.New(color.BgBlack, color.FgGreen)
 
 	var stateSymbol string
 	switch m.Status {
@@ -142,7 +142,7 @@ func (m *Manager) GetPrompt() string {
 	if stateSymbol != "" {
 		prompt += stateColor.Sprint(" | "+stateSymbol+" ")
 	}
-	prompt += arrowColor.Sprint("")
+	prompt += arrowColor.Sprint("") + " "
 	return prompt
 }
 
