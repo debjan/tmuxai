@@ -187,20 +187,20 @@ When you enable Prepare Mode, TmuxAI will:
 To activate Prepare Mode, simply use:
 
 ```
-TmuxAI » /prepare
+TmuxAI ❯ /prepare
 ```
 
 By default, TmuxAI will attempt to detect the shell running in the execution pane. If you need to specify the shell manually, you can provide it as an argument:
 
 ```
-TmuxAI » /prepare bash
+TmuxAI ❯ /prepare bash
 ```
 
 **Prepared Fish Example:**
 
 ```shell
-$ function fish_prompt; set -l s $status; printf '%s@%s:%s[%s][%d]» ' $USER (hostname -s) (prompt_pwd) (date +"%H:%M") $s; end
-username@hostname:~/r/tmuxai[21:05][0]»
+$ function fish_prompt; set -l s $status; printf '%s@%s:%s[%s][%d]❯ ' $USER (hostname -s) (prompt_pwd) (date +"%H:%M") $s; end
+username@hostname:~/r/tmuxai[21:05][0]❯
 ```
 
 ## Watch Mode
@@ -217,7 +217,7 @@ doing.
 To enable Watch Mode, use the `/watch` command followed by a description of what you want TmuxAI to look for:
 
 ```
-TmuxAI » /watch spot and suggest more efficient alternatives to my shell commands
+TmuxAI ❯ /watch spot and suggest more efficient alternatives to my shell commands
 ```
 
 When activated, TmuxAI will:
@@ -232,19 +232,19 @@ Watch Mode could be valuable for scenarios such as:
 - **Learning shell efficiency**: Get suggestions for more concise commands as you work
 
   ```
-  TmuxAI » /watch spot and suggest more efficient alternatives to my shell commands
+  TmuxAI ❯ /watch spot and suggest more efficient alternatives to my shell commands
   ```
 
 - **Detecting common errors**: Receive warnings about potential issues or mistakes
 
   ```
-  TmuxAI » /watch flag commands that could expose sensitive data or weaken system security
+  TmuxAI ❯ /watch flag commands that could expose sensitive data or weaken system security
   ```
 
 - **Log Monitoring and Error Detection**: Have TmuxAI monitor log files or terminal output for errors
 
   ```
-  TmuxAI » /watch monitor log output for errors, warnings, or critical issues and suggest fixes
+  TmuxAI ❯ /watch monitor log output for errors, warnings, or critical issues and suggest fixes
   ```
 
 ## Squashing
@@ -266,7 +266,7 @@ messages into a more compact summary.
 You can check your current context utilization at any time using the `/info` command:
 
 ```bash
-TmuxAI » /info
+TmuxAI ❯ /info
 
 Context
 ────────
@@ -284,7 +284,7 @@ This example shows that the context is at 82.5% capacity (82,500 tokens out of 1
 If you'd like to manage your context before reaching the automatic threshold, you can trigger squashing manually with the `/squash` command:
 
 ```bash
-TmuxAI » /squash
+TmuxAI ❯ /squash
 ```
 
 ## Core Commands
@@ -354,11 +354,11 @@ You can override some configuration values for your current TmuxAI session using
 
 ```bash
 # View current configuration
-TmuxAI » /config
+TmuxAI ❯ /config
 
 # Override a configuration value for this session
-TmuxAI » /config set max_capture_lines 300
-TmuxAI » /config set openrouter.model gpt-4o-mini
+TmuxAI ❯ /config set max_capture_lines 300
+TmuxAI ❯ /config set openrouter.model gpt-4o-mini
 ```
 
 These changes will persist only for the current session and won't modify your config file.

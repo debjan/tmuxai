@@ -8,7 +8,7 @@
 set -euo pipefail
 
 
-GH_REPO="alvinunreal/tmuxai"
+GH_REPO="debjan/tmuxai"
 PROJECT_NAME="tmuxai"
 DEFAULT_INSTALL_DIR="/usr/local/bin"
 

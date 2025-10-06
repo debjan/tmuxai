@@ -142,7 +142,7 @@ func (m *Manager) GetPrompt() string {
 	if stateSymbol != "" {
 		prompt += " " + stateColor.Sprint("["+stateSymbol+"]")
 	}
-	prompt += arrowColor.Sprint(" » ")
+	prompt += arrowColor.Sprint(" ❯ ")
 	return prompt
 }
 

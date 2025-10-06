@@ -43,11 +43,11 @@ func (m *Manager) PrepareExecPaneWithShell(shell string) {
 	var ps1Command string
 	switch shell {
 	case "zsh":
-		ps1Command = `export PROMPT='%n@%m:%~[%T][%?]» '`
+		ps1Command = `export PROMPT='%n@%m:%~[%T][%?]❯ '`
 	case "bash":
-		ps1Command = `export PS1='\u@\h:\w[\A][$?]» '`
+		ps1Command = `export PS1='\u@\h:\w[\A][$?]❯ '`
 	case "fish":
-		ps1Command = `function fish_prompt; set -l s $status; printf '%s@%s:%s[%s][%d]» ' $USER (hostname -s) (prompt_pwd) (date +"%H:%M") $s; end`
+		ps1Command = `function fish_prompt; set -l s $status; printf '%s@%s:%s[%s][%d]❯ ' $USER (hostname -s) (prompt_pwd) (date +"%H:%M") $s; end`
 	default:
 		errMsg := fmt.Sprintf("Shell '%s' in pane %s is recognized but not yet supported for PS1 modification.", shell, m.ExecPane.Id)
 		logger.Info(errMsg)
@@ -72,7 +72,7 @@ func (m *Manager) ExecWaitCapture(command string) (CommandExecHistory, error) {
 
 	animChars := []string{"⋯", "⋱", "⋮", "⋰"}
 	animIndex := 0
-	for !strings.HasSuffix(m.ExecPane.LastLine, "]»") && m.Status != "" {
+	for !strings.HasSuffix(m.ExecPane.LastLine, "]❯") && m.Status != "" {
 		fmt.Printf("\r%s%s ", m.GetPrompt(), animChars[animIndex])
 		animIndex = (animIndex + 1) % len(animChars)
 		time.Sleep(500 * time.Millisecond)
@@ -108,8 +108,8 @@ func (m *Manager) parseExecPaneCommandHistoryWithContent(testContent string) {
 
 	// Regex: Capture status code (group 1), optionally capture command (group 2)
 	// Making the command part optional handles prompts that only show status (like the last line).
-	// ` ?` allows zero or one space after »
-	promptRegex := regexp.MustCompile(`.*\[(\d+)\]» ?(.*)$`)
+	// ` ?` allows zero or one space after ❯
+	promptRegex := regexp.MustCompile(`.*\[(\d+)\]❯ ?(.*)$`)
 
 	scanner := bufio.NewScanner(strings.NewReader(m.ExecPane.Content))
 

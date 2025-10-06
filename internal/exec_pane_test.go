@@ -20,13 +20,13 @@ func TestParseExecPaneCommandHistory_Prompt(t *testing.T) {
 
 	// Mock exec pane content with bash-style prompts
 	manager.ExecPane = &system.TmuxPaneDetails{}
-	testContent := `user@hostname:/path[14:30][0]» ls -la
+	testContent := `user@hostname:/path[14:30][0]❯ ls -la
 total 8
 drwxr-xr-x  3 user user 4096 Jan 1 14:30 .
 drwxr-xr-x 15 user user 4096 Jan 1 14:29 ..
-user@hostname:/path[14:31][0]» echo "hello world"
+user@hostname:/path[14:31][0]❯ echo "hello world"
 hello world
-user@hostname:/path[14:31][0]» `
+user@hostname:/path[14:31][0]❯ `
 
 	manager.parseExecPaneCommandHistoryWithContent(testContent)
 
@@ -63,15 +63,15 @@ just plain text`
 
 	// Test with only status code, no command
 	manager.ExecHistory = []CommandExecHistory{} // Reset
-	testContent2 := `user@hostname:~[14:30][0]» 
-user@hostname:~[14:30][0]» `
+	testContent2 := `user@hostname:~[14:30][0]❯
+user@hostname:~[14:30][0]❯ `
 
 	manager.parseExecPaneCommandHistoryWithContent(testContent2)
 	assert.Len(t, manager.ExecHistory, 0, "Should handle prompts with no commands")
 
 	// Test with command but no terminating prompt (incomplete session)
 	manager.ExecHistory = []CommandExecHistory{} // Reset
-	testContent3 := `user@hostname:~[14:30][0]» long-running-command
+	testContent3 := `user@hostname:~[14:30][0]❯ long-running-command
 output line 1
 output line 2
 still running...`
@@ -94,11 +94,11 @@ func TestParseExecPaneCommandHistory_MixedFormats(t *testing.T) {
 
 	// Mix of different time formats and variations
 	manager.ExecPane = &system.TmuxPaneDetails{}
-	testContent := `user@host:/tmp[09:15][0]» echo "test1"
+	testContent := `user@host:/tmp[09:15][0]❯ echo "test1"
 test1
-different@machine:/home[23:59][1]» echo "test2"
+different@machine:/home[23:59][1]❯ echo "test2"
 test2
-user@localhost:~[00:00][0]» `
+user@localhost:~[00:00][0]❯ `
 
 	manager.parseExecPaneCommandHistoryWithContent(testContent)
 
@@ -175,11 +175,11 @@ func TestParseExecPaneCommandHistory_ErrorHandling(t *testing.T) {
 
 	// Test with commands containing special characters and complex outputs
 	manager.ExecPane = &system.TmuxPaneDetails{}
-	testContent := `user@hostname:~[14:30][0]» echo "hello world" && ls -la | grep test
+	testContent := `user@hostname:~[14:30][0]❯ echo "hello world" && ls -la | grep test
 hello world
 -rw-r--r-- 1 user user 123 Jan 1 14:30 test.txt
-user@hostname:~[14:31][1]» false && echo "this should not appear"
-user@hostname:~[14:31][0]» `
+user@hostname:~[14:31][1]❯ false && echo "this should not appear"
+user@hostname:~[14:31][0]❯ `
 
 	manager.parseExecPaneCommandHistoryWithContent(testContent)
 	assert.Len(t, manager.ExecHistory, 2, "Should parse complex commands with pipes and operators")
@@ -195,9 +195,9 @@ user@hostname:~[14:31][0]» `
 	manager.ExecHistory = []CommandExecHistory{} // Reset
 	longCommand := strings.Repeat("very-long-command-", 10)
 	longOutput := strings.Repeat("very long output line ", 50)
-	testContent2 := fmt.Sprintf(`user@hostname:~[14:30][0]» %s
+	testContent2 := fmt.Sprintf(`user@hostname:~[14:30][0]❯ %s
 %s
-user@hostname:~[14:31][0]» `, longCommand, longOutput)
+user@hostname:~[14:31][0]❯ `, longCommand, longOutput)
 
 	manager.parseExecPaneCommandHistoryWithContent(testContent2)
 	assert.Len(t, manager.ExecHistory, 1, "Should handle long commands and outputs")
@@ -270,7 +270,7 @@ func TestExecWaitCapture_SuccessfulExecution(t *testing.T) {
 		Status:           "running",
 		ExecPane: &system.TmuxPaneDetails{
 			Id:       "exec-pane",
-			LastLine: "user@hostname:~[14:30][0]»", // Proper prompt ending
+			LastLine: "user@hostname:~[14:30][0]❯", // Proper prompt ending
 		},
 	}
 
@@ -286,15 +286,15 @@ func TestExecWaitCapture_SuccessfulExecution(t *testing.T) {
 	system.TmuxSendCommandToPane = func(paneId string, command string, enter bool) error {
 		commandSent = command
 		// Immediately set the proper ending to simulate quick command completion
-		manager.ExecPane.LastLine = "user@hostname:~[14:30][0]»"
+		manager.ExecPane.LastLine = "user@hostname:~[14:30][0]❯"
 		return nil
 	}
 
 	// Mock successful command output with proper prompt format
 	system.TmuxCapturePane = func(paneId string, maxLines int) (string, error) {
-		return `user@hostname:~[14:30][0]» echo "test successful"
+		return `user@hostname:~[14:30][0]❯ echo "test successful"
 test successful
-user@hostname:~[14:31][0]» `, nil
+user@hostname:~[14:31][0]❯ `, nil
 	}
 
 	// Test successful command execution
