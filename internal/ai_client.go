@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/alvinunreal/tmuxai/config"
-	"github.com/alvinunreal/tmuxai/logger"
+	"github.com/debjan/tmuxai/config"
+	"github.com/debjan/tmuxai/logger"
 )
 
 // AiClient represents an AI client for interacting with OpenAI-compatible APIs including Azure OpenAI
@@ -135,7 +135,7 @@ func (c *AiClient) ChatCompletion(ctx context.Context, messages []Message, model
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set(apiKeyHeader, apiKey)
 
-	req.Header.Set("HTTP-Referer", "https://github.com/alvinunreal/tmuxai")
+	req.Header.Set("HTTP-Referer", "https://github.com/debjan/tmuxai")
 	req.Header.Set("X-Title", "TmuxAI")
 
 	// Log the request details for debugging before sending
