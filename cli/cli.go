@@ -7,9 +7,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/debjan/tmuxai/config"
-	"github.com/debjan/tmuxai/internal"
-	"github.com/debjan/tmuxai/logger"
+	"github.com/alvinunreal/tmuxai/config"
+	"github.com/alvinunreal/tmuxai/internal"
+	"github.com/alvinunreal/tmuxai/logger"
 	"github.com/spf13/cobra"
 )
 

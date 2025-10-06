@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/debjan/tmuxai/config"
-	"github.com/debjan/tmuxai/logger"
-	"github.com/debjan/tmuxai/system"
+	"github.com/alvinunreal/tmuxai/config"
+	"github.com/alvinunreal/tmuxai/logger"
+	"github.com/alvinunreal/tmuxai/system"
 )
 
 const helpMessage = `Available commands:
