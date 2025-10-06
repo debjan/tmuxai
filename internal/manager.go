@@ -119,30 +119,30 @@ func (m *Manager) GetConfig() *config.Config {
 
 // getPrompt returns the prompt string with color
 func (m *Manager) GetPrompt() string {
-	tmuxaiColor := color.New(color.FgGreen, color.Bold)
-	arrowColor := color.New(color.FgYellow, color.Bold)
-	stateColor := color.New(color.FgMagenta, color.Bold)
+	tmuxaiColor := color.New(color.BgGreen, color.FgGreen, color.Bold)
+	stateColor := color.New(color.BgGreen, color.FgMagenta, color.Bold)
+	arrowColor := color.New(color.BgGreen)
 
 	var stateSymbol string
 	switch m.Status {
 	case "running":
-		stateSymbol = "▶"
+		stateSymbol = ""
 	case "waiting":
-		stateSymbol = "?"
+		stateSymbol = ""
 	case "done":
-		stateSymbol = "✓"
+		stateSymbol = ""
 	default:
-		stateSymbol = ""
+		stateSymbol = ""
 	}
 	if m.WatchMode {
-		stateSymbol = "∞"
+		stateSymbol = ""
 	}
 
 	prompt := tmuxaiColor.Sprint("TmuxAI")
 	if stateSymbol != "" {
-		prompt += " " + stateColor.Sprint("["+stateSymbol+"]")
+		prompt += " " + stateColor.Sprint("| "+stateSymbol+" ")
 	}
-	prompt += arrowColor.Sprint(" ❯ ")
+	prompt += arrowColor.Sprint(" ")
 	return prompt
 }
 
