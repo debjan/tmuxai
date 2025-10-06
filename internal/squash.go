@@ -91,7 +91,7 @@ func (m *Manager) squashHistory() {
 
 // summarizeChatHistory asks the AI to summarize the chat history
 func (m *Manager) summarizeChatHistory(messages []ChatMessage) (string, error) {
-	s := spinner.New(spinner.CharSets[26], 100*time.Millisecond)
+	s := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 	s.Start()
 
 	// Convert messages to a readable format for summarization

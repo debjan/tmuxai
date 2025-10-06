@@ -86,9 +86,9 @@ func renderCountdown(remaining, total int, paused bool, highlightColor, dimColor
 	// Use simple fixed-width characters for status indicators
 	var statusIndicator string
 	if paused {
-		statusIndicator = pauseColor("⏸")
+		statusIndicator = pauseColor("")
 	} else {
-		statusIndicator = highlightColor("▶")
+		statusIndicator = highlightColor("")
 	}
 
 	// Ensure exact character count and consistent spacing with printf

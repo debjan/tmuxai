@@ -70,7 +70,7 @@ func (m *Manager) ExecWaitCapture(command string) (CommandExecHistory, error) {
 
 	m.ExecPane.Refresh(m.GetMaxCaptureLines())
 
-	animChars := []string{"⋯", "⋱", "⋮", "⋰"}
+	animChars := []string{"⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"}
 	animIndex := 0
 	for !strings.HasSuffix(m.ExecPane.LastLine, "]❯") && m.Status != "" {
 		fmt.Printf("\r%s%s ", m.GetPrompt(), animChars[animIndex])
