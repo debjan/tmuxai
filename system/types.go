@@ -101,7 +101,7 @@ func (p *TmuxPaneDetails) Refresh(maxLines int) {
 	content, _ := TmuxCapturePane(p.Id, maxLines)
 	p.Content = content
 	p.LastLine = strings.TrimSpace(strings.Split(p.Content, "\n")[len(strings.Split(p.Content, "\n"))-1])
-	p.IsPrepared = strings.HasSuffix(p.LastLine, "❯")
+	p.IsPrepared = strings.HasSuffix(p.LastLine, "")
 	if IsShellCommand(p.CurrentCommand) {
 		p.Shell = p.CurrentCommand
 	}
