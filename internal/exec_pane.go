@@ -43,11 +43,11 @@ func (m *Manager) PrepareExecPaneWithShell(shell string) {
 	var ps1Command string
 	switch shell {
 	case "zsh":
-		ps1Command = `export PROMPT='[\e[0;30m\]\[\e[42m\] %n@%m:%~[%T][%?]\[\e[0m\]\[\e[0;32m\] '`
+		ps1Command = `export PROMPT='\033[30m\033[42m %n@%m:%~[%T][%?]\033[0m\033[32m '`
 	case "bash":
-		ps1Command = `export PS1='[\e[0;30m\]\[\e[42m\] \u@\h:\w[\A][$?]\[\e[0m\]\[\e[0;32m\] '`
+		ps1Command = `export PS1='\033[30m\033[42m \u@\h:\w[\A][$?]\033[0m\033[32m '`
 	case "fish":
-		ps1Command = `function fish_prompt; set -l s $status; printf '[\e[0;30m\]\[\e[42m\] %s@%s:%s[%s][%d]\[\e[0m\]\[\e[0;32m\] ' $USER (hostname -s) (prompt_pwd) (date +"%H:%M") $s; end`
+		ps1Command = `function fish_prompt; set -l s $status; printf '\033[30m\033[42m %s@%s:%s[%s][%d]\033[0m\033[32m ' $USER (hostname -s) (prompt_pwd) (date +"%H:%M") $s; end`
 	default:
 		errMsg := fmt.Sprintf("Shell '%s' in pane %s is recognized but not yet supported for PS1 modification.", shell, m.ExecPane.Id)
 		logger.Info(errMsg)
