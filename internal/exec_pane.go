@@ -47,7 +47,7 @@ func (m *Manager) PrepareExecPaneWithShell(shell string) {
 		ps1Command = `export PROMPT=$'%{\033[30m\033[1;102m%} %n@%m:%~[$?]%{\033[0m%} '` + `; export RPROMPT=""`
 	case "bash":
 		// Format: user@host:dir[status] with proper  character before command
-		ps1Command = `export PS1='\[\033[1;102m\033[30m\] \u@\h:\w[$?]\[\033[40m\033[1;32m\] '`
+		ps1Command = `export PS1='\[\033[1;102m\[\033[30m\] \u@\h:\w[$?]\[\033[40m\033[1;32m\] '`
 	case "fish":
 		// Format: user@host:dir[status] with proper  character before command
 		ps1Command = `function fish_prompt; set_color -b green black; printf ' %s@%s:%s[%s]\033[0m' $USER (hostname -s) (prompt_pwd) (status); printf ' '; set_color normal; end`
