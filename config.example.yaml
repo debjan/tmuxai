@@ -6,7 +6,13 @@ send_keys_confirm: true # Confirm before executing send keys
 paste_multiline_confirm: true # Confirm before pasting multiline content
 exec_confirm: true # Confirm before executing commands
 
-# Not only OpenRouter, you can use any OpenAI compatible API
+# OpenAI Responses API (recommended for new models like GPT-5)
+# openai:
+#   api_key: sk-XXXXXXXXX
+#   model: gpt-5-codex
+#   base_url: https://api.openai.com/v1  # Optional, defaults to this
+
+# With openRouter, you can use any chat completion api
 openrouter:
   api_key: sk-or-v1-XXXXXXXXX
   model: google/gemini-2.5-flash-preview # default model
@@ -19,16 +25,10 @@ openrouter:
 #   api_version: 2025-04-01-preview
 #   deployment_name: gpt-4o
 
-# OpenAI example
-# openrouter:
-#   api_key: sk-XXXXXXXXX
-#   model: o4-mini-2025-04-16
-#   base_url: https://api.openai.com/v1
-
 # Anthropic example
 # openrouter:
 #   api_key: sk-proj-XXX
-#   model:
+#   model: claude-4.5-sonnet
 #   base_url: https://api.anthropic.com/v1
 
 # Local Ollama example
