@@ -461,16 +461,6 @@ azure_openai:
   deployment_name: "gpt-4o"
 ```
 
-#### Provider Selection
-
-TmuxAI automatically selects the AI provider based on configuration priority:
-
-1. **OpenAI** (Responses API) - If `openai.api_key` is configured
-2. **Azure OpenAI** (Chat Completions) - If `azure_openai.api_key` is configured
-3. **OpenRouter** (Chat Completions) - Default fallback
-
-You can override the provider at runtime by setting the appropriate API key and model configuration.
-
 _Prompts are currently tuned for Gemini 2.5 by default; behavior with other models may vary._
 
 ## Contributing
