@@ -33,6 +33,7 @@
   - [Quick Install](#quick-install)
   - [Homebrew](#homebrew)
   - [Manual Download](#manual-download)
+  - [Install from Main (Latest Development Version)](#install-from-main-latest-development-version)
 - [Post-Installation Setup](#post-installation-setup)
 - [TmuxAI Layout](#tmuxai-layout)
 - [Observe Mode](#observe-mode)
@@ -103,6 +104,16 @@ After downloading, make the binary executable and move it to a directory in your
 chmod +x ./tmuxai
 sudo mv ./tmuxai /usr/local/bin/
 ```
+
+### Install from Main
+
+To install the latest development version directly from the main branch:
+
+```bash
+go install github.com/alvinunreal/tmuxai@master
+```
+
+**Note:** The main branch contains the latest features and fixes but may be less stable than official releases.
 
 ## Post-Installation Setup
 
