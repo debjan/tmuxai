@@ -33,7 +33,7 @@
   - [Quick Install](#quick-install)
   - [Homebrew](#homebrew)
   - [Manual Download](#manual-download)
-  - [Install from Main (Latest Development Version)](#install-from-main-latest-development-version)
+  - [Install from Main](#install-from-main)
 - [Post-Installation Setup](#post-installation-setup)
 - [TmuxAI Layout](#tmuxai-layout)
 - [Observe Mode](#observe-mode)
