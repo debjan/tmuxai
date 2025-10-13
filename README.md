@@ -110,7 +110,7 @@ sudo mv ./tmuxai /usr/local/bin/
 To install the latest development version directly from the main branch:
 
 ```bash
-go install github.com/alvinunreal/tmuxai@master
+go install github.com/alvinunreal/tmuxai@main
 ```
 
 **Note:** The main branch contains the latest features and fixes but may be less stable than official releases.
