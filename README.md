@@ -92,14 +92,6 @@ curl -fsSL https://get.tmuxai.dev | bash
 
 This installs TmuxAI to `/usr/local/bin/tmuxai` by default. If you need to install to a different location or want to see what the script does before running it, you can view the source at [get.tmuxai.dev](https://get.tmuxai.dev).
 
-### Homebrew
-
-If you use Homebrew, you can install TmuxAI with:
-
-```bash
-brew install tmuxai
-```
-
 ### Manual Download
 
 You can also download pre-built binaries from the [GitHub releases page](https://github.com/alvinunreal/tmuxai/releases).
