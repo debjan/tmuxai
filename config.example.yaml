@@ -10,28 +10,37 @@ max_capture_lines: 200
 # Wait interval when exec pane is considered busy (used in observe and watch modes)
 wait_interval: 5
 
+default_model: "gemini-flash" # If empty uses the first one
+
 models:
-  gpt4:
-    provider: "openai"
-    model: "gpt-4"
-    api_key: "sk-XXXXXXXXX"
-    base_url: "https://api.openai.com/v1"
-
-  claude-sonnet:
+  fast:
     provider: "openrouter"
-    model: "anthropic/claude-3.5-sonnet"
-    api_key: "sk-or-XXXXXXXXX"
+    model: "anthropic/claude-haiku-4.5"
+    api_key: "sk-or-your-openrouter-key"
 
-  gemini-flash:
+  smart:
     provider: "openrouter"
-    model: "google/gemini-2.5-flash-preview"
-    api_key: "sk-or-v1-XXXXXXXXX"
-    base_url: "https://openrouter.ai/api/v1"
+    model: "google/gemini-2.5-prod"
+    api_key: "sk-or-your-openrouter-key"
+
+  # You can use any chat completion compatible endpoint as base_url
+  anthropic:
+    provider: "openrouter"
+    model: "claude-3-5-sonnet-20241022"
+    api_key: "your-anthropic-api-key"
+    base_url: "https://api.anthropic.com"
 
   local-llama:
     provider: "openrouter"
-    model: "meta-llama/llama-3.1-8b-instruct:free"
-    api_key: "sk-or-XXXXXXXXX"
+    model: "gemma3:1b"
+    api_key: "sk-or-your-openrouter-key"
+    base_url: http://localhost:11434/v1
+
+  # Responses API
+  codex:
+    provider: "openai"
+    model: "gpt-5-codex"
+    api_key: "sk-or-your-openrouter-key"
 
   azure-gpt4:
     provider: "azure"
@@ -40,8 +49,6 @@ models:
     api_base: "https://your-resource.openai.azure.com/"
     api_version: "2025-04-01-preview"
     deployment_name: "gpt-4o"
-
-default_model: "gemini-flash"  # Which model to use by default
 
 # Confirm before AI executes a command
 exec_confirm: true
