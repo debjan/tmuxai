@@ -123,36 +123,34 @@ go install github.com/alvinunreal/tmuxai@main
 
 ## Post-Installation Setup
 
-After installing TmuxAI, you need to configure your API key to start using it:
+TmuxAI reads its configuration from `~/.config/tmuxai/config.yaml`. To get running, create the file with a model entry that points at the provider you use.
 
-1. **Set the API Key**
-   TmuxAI supports multiple AI providers. Choose one of the following:
+1. **Create the config path**
 
-   **OpenAI:**
    ```bash
-   export TMUXAI_OPENAI_API_KEY="your-openai-api-key-here"
-   export TMUXAI_OPENAI_MODEL="gpt-5-codex"
+   mkdir -p ~/.config/tmuxai
+   vim ~/.config/tmuxai/config.yaml
    ```
 
-   **OpenRouter (Default):**
-   ```bash
-   export TMUXAI_OPENROUTER_API_KEY="your-openrouter-api-key-here"
+2. **Add a minimal config**
+
+   ```yaml
+   models:
+     primary:
+       provider: openrouter  # openrouter, openai or azure
+       model: anthropic/claude-haiku-4.5
+       api_key: sk-your-api-key
    ```
 
-   **Azure OpenAI:**
-   ```bash
-   export TMUXAI_AZURE_OPENAI_API_KEY="your-azure-api-key-here"
-   export TMUXAI_AZURE_OPENAI_API_BASE="https://your-resource.openai.azure.com/"
-   export TMUXAI_AZURE_OPENAI_DEPLOYMENT_NAME="your-deployment"
-   ```
+   Swap the provider name and fill in the model/API key required by your account.
 
-2. **Start TmuxAI**
+3. **Start TmuxAI**
 
    ```bash
    tmuxai
    ```
 
-   **Provider Priority:** If multiple API keys are configured, TmuxAI will use them in this order: OpenAI → Azure OpenAI → OpenRouter.
+See [Model Configuration](#model-configuration) for more details.
 
 ## TmuxAI Layout
 
@@ -434,11 +432,24 @@ models:
     provider: "openrouter"
     model: "google/gemini-2.5-prod"
     api_key: "sk-or-your-openrouter-key"
-    base_url: "https://openrouter.ai/api/v1"
+
+  # You can use any chat completion compatible endpoint as base_url
+  anthropic:
+    provider: "openrouter"
+    model: "claude-3-5-sonnet-20241022"
+    api_key: "your-anthropic-api-key"
+    base_url: "https://api.anthropic.com"
 
   local-llama:
     provider: "openrouter"
-    model: "meta-llama/llama-3.1-8b-instruct:free"
+    model: "gemma3:1b"
+    api_key: "sk-or-your-openrouter-key"
+    base_url: http://localhost:11434/v1
+
+  # Responses API
+  codex:
+    provider: "openai"
+    model: "gpt-5-codex"
     api_key: "sk-or-your-openrouter-key"
 
   azure-gpt4:
@@ -452,8 +463,13 @@ models:
 
 **Supported Providers:**
 - `openai` - OpenAI Responses API (GPT-4, GPT-5, etc.)
-- `openrouter` - OpenRouter Chat Completions API (access to many models)
+- `openrouter` - Universal OpenAI-Compatible Gateway (access to any OpenAI-compatible provider)
 - `azure` - Azure OpenAI Chat Completions API
+
+**OpenRouter Universal Access Examples:**
+```yaml
+models:
+```
 
 ### Switching Between Models
 
