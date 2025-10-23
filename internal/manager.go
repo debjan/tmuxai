@@ -45,7 +45,7 @@ type Manager struct {
 	LoadedKBs        map[string]string      // Loaded knowledge bases (name -> content)
 
 	// Functions for mocking
-	confirmedToExec  func(command string, prompt string, edit bool) (bool, string)
+	confirmedToExec   func(command string, prompt string, edit bool) (bool, string)
 	getTmuxPanesInXml func(config *config.Config) string
 }
 
@@ -126,9 +126,9 @@ func (m *Manager) GetConfig() *config.Config {
 func (m *Manager) GetPrompt() string {
 	tmuxaiColor := color.New(color.BgGreen, color.FgBlack)
 	stateColor := color.New(color.BgHiGreen, color.FgBlack)
-	arrowColor := color.New(color.BgBlack, color.FgHiGreen)
+	arrowColor := color.New(color.FgHiGreen)
 	// sepColor := color.New(color.BgGreen, color.FgHiGreen)
-	modelColor := color.New(color.BgGreen, color.FgHiBlue)
+	// modelColor := color.New(color.BgGreen, color.FgHiBlue)
 
 	var stateSymbol string
 	switch m.Status {
@@ -149,23 +149,8 @@ func (m *Manager) GetPrompt() string {
 	// prompt += sepColor.Sprint("")
 	// Show current model if it's not the default or first available model
 
-	currentModel := m.GetModelsDefault()
-	availableModels := m.GetAvailableModels()
-	if len(availableModels) > 0 {
-		// Get the "expected" model (configured default or first available)
-		expectedModel := m.Config.DefaultModel
-		if expectedModel == "" && len(availableModels) > 0 {
-			expectedModel = availableModels[0] // First model as default
-		}
-
-		// Show model if current is different from expected
-		if currentModel != "" && currentModel != expectedModel {
-			prompt += modelColor.Sprint(" "+currentModel+" ")
-		}
-	}
-
 	if stateSymbol != "" {
-		prompt += stateColor.Sprint(" "+stateSymbol+" ")
+		prompt += stateColor.Sprint(" " + stateSymbol)
 	}
 	prompt += arrowColor.Sprint("") + " "
 	return prompt
