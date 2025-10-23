@@ -42,6 +42,7 @@ type Manager struct {
 	WatchMode        bool
 	OS               string
 	SessionOverrides map[string]interface{} // session-only config overrides
+	LoadedKBs        map[string]string      // Loaded knowledge bases (name -> content)
 
 	// Functions for mocking
 	confirmedToExec  func(command string, prompt string, edit bool) (bool, string)
@@ -50,10 +51,6 @@ type Manager struct {
 
 // NewManager creates a new manager agent
 func NewManager(cfg *config.Config) (*Manager, error) {
-	if cfg.OpenRouter.APIKey == "" && cfg.AzureOpenAI.APIKey == "" {
-		fmt.Println("An API key is required. Set OpenRouter or Azure OpenAI credentials in the config file or environment variables.")
-		return nil, fmt.Errorf("API key required")
-	}
 
 	paneId, err := system.TmuxCurrentPaneId()
 	if err != nil {
@@ -86,12 +83,20 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 		ExecPane:         &system.TmuxPaneDetails{},
 		OS:               os,
 		SessionOverrides: make(map[string]interface{}),
+		LoadedKBs:        make(map[string]string),
 	}
+
+	// Set the config manager in the AI client
+	aiClient.SetConfigManager(manager)
 
 	manager.confirmedToExec = manager.confirmedToExecFn
 	manager.getTmuxPanesInXml = manager.getTmuxPanesInXmlFn
 
 	manager.InitExecPane()
+
+	// Auto-load knowledge bases from config
+	manager.autoLoadKBs()
+
 	return manager, nil
 }
 

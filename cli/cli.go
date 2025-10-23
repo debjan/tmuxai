@@ -16,6 +16,8 @@ import (
 var (
 	initMessage  string
 	taskFileFlag string
+	kbFlag       string
+	modelFlag    string
 )
 
 var rootCmd = &cobra.Command{
@@ -56,6 +58,19 @@ var rootCmd = &cobra.Command{
 			logger.Error("manager.NewManager failed: %v", err)
 			os.Exit(1)
 		}
+
+		// Load knowledge bases from CLI flag
+		if kbFlag != "" {
+			kbNames := strings.Split(kbFlag, ",")
+			mgr.LoadKBsFromCLI(kbNames)
+		}
+
+		// Set model from CLI flag
+		if modelFlag != "" {
+			mgr.SetModelsDefault(modelFlag)
+			logger.Info("Set model from CLI flag: %s", modelFlag)
+		}
+
 		if initMessage != "" {
 			logger.Info("Starting with initial subcommand: %s", initMessage)
 		}
@@ -69,6 +84,8 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	rootCmd.Flags().StringVarP(&taskFileFlag, "file", "f", "", "Read request from specified file")
+	rootCmd.Flags().StringVar(&kbFlag, "kb", "", "Comma-separated list of knowledge bases to load (e.g., --kb docker,git)")
+	rootCmd.Flags().StringVar(&modelFlag, "model", "", "AI model configuration to use (e.g., --model gpt4)")
 	rootCmd.Flags().BoolP("version", "v", false, "Print version information")
 }
 

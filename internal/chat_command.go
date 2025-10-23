@@ -18,6 +18,12 @@ const helpMessage = `Available commands:
 - /prepare: Prepare the pane for TmuxAI automation
 - /watch <prompt>: Start watch mode
 - /squash: Summarize the chat history
+- /model: List available models and show current model
+- /model <name>: Switch to a different model
+- /kb: List available knowledge bases
+- /kb load <name>: Load a knowledge base
+- /kb unload <name>: Unload a knowledge base
+- /kb unload --all: Unload all knowledge bases
 - /exit: Exit the application`
 
 var commands = []string{
@@ -30,6 +36,8 @@ var commands = []string{
 	"/prepare",
 	"/config",
 	"/squash",
+	"/model",
+	"/kb",
 }
 
 // checks if the given content is a command
@@ -191,6 +199,111 @@ Watch for: ` + watchDesc
 			return
 		}
 
+	case prefixMatch(commandPrefix, "/kb"):
+		// Handle KB commands: /kb, /kb list, /kb load <name>, /kb unload <name>
+		if len(parts) == 1 || (len(parts) == 2 && parts[1] == "list") {
+			// List all available knowledge bases
+			kbs, err := m.listKBs()
+			if err != nil {
+				m.Println(fmt.Sprintf("Error listing knowledge bases: %v", err))
+				return
+			}
+
+			if len(kbs) == 0 {
+				m.Println("No knowledge bases found in " + config.GetKBDir())
+				return
+			}
+
+			m.Println("Available knowledge bases:")
+			totalTokens := 0
+			loadedCount := 0
+
+			for _, name := range kbs {
+				_, loaded := m.LoadedKBs[name]
+				status := "[ ]"
+				tokens := ""
+				if loaded {
+					status = "[✓]"
+					tokenCount := system.EstimateTokenCount(m.LoadedKBs[name])
+					tokens = fmt.Sprintf(" (%d tokens)", tokenCount)
+					totalTokens += tokenCount
+					loadedCount++
+				}
+				m.Println(fmt.Sprintf("  %s %s%s", status, name, tokens))
+			}
+
+			if loadedCount > 0 {
+				m.Println("")
+				m.Println(fmt.Sprintf("Loaded: %d KB(s), %d tokens", loadedCount, totalTokens))
+			}
+			return
+
+		} else if len(parts) >= 2 && parts[1] == "load" {
+			if len(parts) < 3 {
+				m.Println("Usage: /kb load <name>")
+				return
+			}
+
+			name := parts[2]
+			if _, loaded := m.LoadedKBs[name]; loaded {
+				m.Println(fmt.Sprintf("Knowledge base '%s' is already loaded", name))
+				return
+			}
+
+			if err := m.loadKB(name); err != nil {
+				m.Println(fmt.Sprintf("Error loading KB '%s': %v", name, err))
+				return
+			}
+
+			tokenCount := system.EstimateTokenCount(m.LoadedKBs[name])
+			m.Println(fmt.Sprintf("✓ Loaded knowledge base: %s (%d tokens)", name, tokenCount))
+			return
+
+		} else if len(parts) >= 2 && parts[1] == "unload" {
+			if len(parts) >= 3 && parts[2] == "--all" {
+				// Unload all KBs
+				if len(m.LoadedKBs) == 0 {
+					m.Println("No knowledge bases are currently loaded")
+					return
+				}
+
+				count := len(m.LoadedKBs)
+				m.LoadedKBs = make(map[string]string)
+				m.Println(fmt.Sprintf("✓ Unloaded all knowledge bases (%d KB(s))", count))
+				return
+			}
+
+			if len(parts) < 3 {
+				m.Println("Usage: /kb unload <name> or /kb unload --all")
+				return
+			}
+
+			name := parts[2]
+			if err := m.unloadKB(name); err != nil {
+				m.Println(fmt.Sprintf("Error: %v", err))
+				return
+			}
+
+			m.Println(fmt.Sprintf("✓ Unloaded knowledge base: %s", name))
+			return
+
+		} else {
+			m.Println("Usage: /kb [list|load <name>|unload <name>|unload --all]")
+			return
+		}
+
+	case prefixMatch(commandPrefix, "/model"):
+		// Handle model commands: /model, /model <name>
+		if len(parts) == 1 {
+			// List available models and show current
+			m.listModels()
+			return
+		} else if len(parts) >= 2 {
+			modelName := strings.Join(parts[1:], " ")
+			m.switchModel(modelName)
+			return
+		}
+
 	default:
 		m.Println(fmt.Sprintf("Unknown command: %s. Type '/help' to see available commands.", command))
 		return
@@ -217,6 +330,29 @@ func (m *Manager) formatInfo() {
 	formatLine("Max Capture Lines", m.Config.MaxCaptureLines)
 	formatLine("Wait Interval", m.Config.WaitInterval)
 
+	// Display AI model information
+	currentModelConfig, _ := m.GetCurrentModelConfig()
+	currentDefault := m.GetModelsDefault()
+	availableModels := m.GetAvailableModels()
+
+	if len(availableModels) > 0 {
+		// Show current model configuration
+		modelName := currentDefault
+		if modelName == "" && len(availableModels) > 0 {
+			modelName = availableModels[0] // First model as default
+		}
+		if modelName != "" {
+			formatLine("Model", modelName)
+		}
+		if modelConfig, exists := m.GetModelConfig(modelName); exists {
+			formatLine("Provider", modelConfig.Provider)
+		}
+	} else {
+		// Legacy configuration
+		formatLine("Provider", currentModelConfig.Provider)
+		formatLine("Model", currentModelConfig.Model)
+	}
+
 	// Display context information section
 	fmt.Println(formatter.FormatSection("\nContext"))
 	formatLine("Messages", len(m.Messages))
@@ -235,6 +371,12 @@ func (m *Manager) formatInfo() {
 	fmt.Printf("%-*s  %s\n", labelWidth, "", formatter.FormatProgressBar(usagePercent, 10))
 	formatLine("Max Size", fmt.Sprintf("%d tokens", m.GetMaxContextSize()))
 
+	// Display knowledge base information
+	if len(m.LoadedKBs) > 0 {
+		kbTokens := m.getTotalLoadedKBTokens()
+		formatLine("Loaded KBs", fmt.Sprintf("%d (%d tokens)", len(m.LoadedKBs), kbTokens))
+	}
+
 	// Display tmux panes section
 	fmt.Println()
 	fmt.Println(formatter.FormatSection("Tmux Window Panes"))
@@ -244,4 +386,72 @@ func (m *Manager) formatInfo() {
 		pane.Refresh(m.GetMaxCaptureLines())
 		fmt.Println(pane.FormatInfo(formatter))
 	}
+}
+
+// listModels displays available models and highlights the current one
+func (m *Manager) listModels() {
+	formatter := system.NewInfoFormatter()
+
+	// Get current model configuration
+	currentModelConfig, _ := m.GetCurrentModelConfig()
+	currentDefault := m.GetModelsDefault()
+
+	fmt.Println(formatter.FormatSection("\nAvailable Models"))
+
+	// List configured models
+	availableModels := m.GetAvailableModels()
+	if len(availableModels) > 0 {
+		for _, name := range availableModels {
+			config, exists := m.GetModelConfig(name)
+			if exists {
+				status := " [ ]"
+				if currentDefault == name {
+					status = " [✓]"
+				}
+				fmt.Printf("%s %s (%s: %s)\n", status, name, config.Provider, config.Model)
+			}
+		}
+	} else {
+		fmt.Println("No model configurations found. Using legacy configuration.")
+	}
+
+	// Show current model from legacy config if no models configured
+	if len(availableModels) == 0 || currentDefault == "" {
+		fmt.Println("\nCurrent Model (Legacy):")
+		fmt.Printf("  Provider: %s\n", currentModelConfig.Provider)
+		fmt.Printf("  Model: %s\n", currentModelConfig.Model)
+		if currentModelConfig.BaseURL != "" {
+			fmt.Printf("  Base URL: %s\n", currentModelConfig.BaseURL)
+		}
+	} else {
+		fmt.Println("\nCurrent Model:")
+		fmt.Printf("  Configuration: %s\n", currentDefault)
+		fmt.Printf("  Provider: %s\n", currentModelConfig.Provider)
+		fmt.Printf("  Model: %s\n", currentModelConfig.Model)
+		if currentModelConfig.BaseURL != "" {
+			fmt.Printf("  Base URL: %s\n", currentModelConfig.BaseURL)
+		}
+	}
+
+	if len(availableModels) > 0 {
+		fmt.Println("\nUsage: /model <name> to switch models")
+	}
+}
+
+// switchModel switches to the specified model configuration
+func (m *Manager) switchModel(modelName string) {
+	// Check if the model exists in configurations
+	_, exists := m.GetModelConfig(modelName)
+	if !exists {
+		m.Println(fmt.Sprintf("Model '%s' not found. Available models: %s", modelName, strings.Join(m.GetAvailableModels(), ", ")))
+		return
+	}
+
+	// Set the model as default for this session
+	m.SetModelsDefault(modelName)
+
+	// Get the model configuration to show details
+	modelConfig, _ := m.GetModelConfig(modelName)
+
+	m.Println(fmt.Sprintf("✓ Switched to %s (%s: %s)", modelName, modelConfig.Provider, modelConfig.Model))
 }

@@ -33,6 +33,7 @@
   - [Quick Install](#quick-install)
   - [Homebrew](#homebrew)
   - [Manual Download](#manual-download)
+  - [Install from Main](#install-from-main)
 - [Post-Installation Setup](#post-installation-setup)
 - [TmuxAI Layout](#tmuxai-layout)
 - [Observe Mode](#observe-mode)
@@ -40,6 +41,13 @@
 - [Watch Mode](#watch-mode)
   - [Activating Watch Mode](#activating-watch-mode)
   - [Example Use Cases](#example-use-cases)
+- [Knowledge Base](#knowledge-base)
+  - [Creating Knowledge Bases](#creating-knowledge-bases)
+  - [Using Knowledge Bases](#using-knowledge-bases)
+  - [Auto-Loading Knowledge Bases](#auto-loading-knowledge-bases)
+- [Model Configuration](#model-configuration)
+  - [Setting Up Multiple Models](#setting-up-multiple-models)
+  - [Switching Between Models](#switching-between-models)
 - [Squashing](#squashing)
   - [What is Squashing?](#what-is-squashing)
   - [Manual Squashing](#manual-squashing)
@@ -48,7 +56,6 @@
 - [Configuration](#configuration)
   - [Environment Variables](#environment-variables)
   - [Session-Specific Configuration](#session-specific-configuration)
-  - [Using Other AI Providers](#using-other-ai-providers)
 - [Contributing](#contributing)
 - [License](#license)
 
@@ -85,14 +92,6 @@ curl -fsSL https://get.tmuxai.dev | bash
 
 This installs TmuxAI to `/usr/local/bin/tmuxai` by default. If you need to install to a different location or want to see what the script does before running it, you can view the source at [get.tmuxai.dev](https://get.tmuxai.dev).
 
-### Homebrew
-
-If you use Homebrew, you can install TmuxAI with:
-
-```bash
-brew install tmuxai
-```
-
 ### Manual Download
 
 You can also download pre-built binaries from the [GitHub releases page](https://github.com/alvinunreal/tmuxai/releases).
@@ -104,22 +103,46 @@ chmod +x ./tmuxai
 sudo mv ./tmuxai /usr/local/bin/
 ```
 
+### Install from Main
+
+To install the latest development version directly from the main branch:
+
+```bash
+go install github.com/alvinunreal/tmuxai@main
+```
+
+**Note:** The main branch contains the latest features and fixes but may be less stable than official releases.
+
 ## Post-Installation Setup
 
-After installing TmuxAI, you need to configure your API key to start using it:
+TmuxAI reads its configuration from `~/.config/tmuxai/config.yaml`. To get running, create the file with a model entry that points at the provider you use.
 
-1. **Set the API Key**  
-   TmuxAI uses the OpenRouter endpoint by default. Set your API key by adding the following to your shell configuration (e.g., `~/.bashrc`, `~/.zshrc`):
+1. **Create the config path**
 
    ```bash
-   export TMUXAI_OPENROUTER_API_KEY="your-api-key-here"
+   mkdir -p ~/.config/tmuxai
+   vim ~/.config/tmuxai/config.yaml
    ```
 
-2. **Start TmuxAI**
+2. **Add a minimal config**
+
+   ```yaml
+   models:
+     primary:
+       provider: openrouter  # openrouter, openai or azure
+       model: anthropic/claude-haiku-4.5
+       api_key: sk-your-api-key
+   ```
+
+   Swap the provider name and fill in the model/API key required by your account.
+
+3. **Start TmuxAI**
 
    ```bash
    tmuxai
    ```
+
+See [Model Configuration](#model-configuration) for more details.
 
 ## TmuxAI Layout
 
@@ -287,6 +310,212 @@ If you'd like to manage your context before reaching the automatic threshold, yo
 TmuxAI ❯ /squash
 ```
 
+## Knowledge Base
+
+The Knowledge Base feature allows you to create pre-defined context files in markdown format that can be loaded into TmuxAI's conversation context. This is useful for sharing common patterns, workflows, or project-specific information with the AI across sessions.
+
+### Creating Knowledge Bases
+
+Knowledge bases are markdown files stored in `~/.config/tmuxai/kb/`. To create one:
+
+1. Create the knowledge base directory if it doesn't exist:
+   ```bash
+   mkdir -p ~/.config/tmuxai/kb
+   ```
+
+2. Create a markdown file with your knowledge base content:
+   ```bash
+   cat > ~/.config/tmuxai/kb/docker-workflows.md << 'EOF'
+   # Docker Workflows
+
+   ## Common Commands
+   - Always use `docker compose` (not `docker-compose`)
+   - Prefer named volumes over bind mounts for databases
+   - Use `.env` files for environment-specific configuration
+
+   ## Project Structure
+   - Development: `docker compose -f docker-compose.dev.yml up`
+   - Production: `docker compose -f docker-compose.prod.yml up -d`
+   EOF
+   ```
+
+### Using Knowledge Bases
+
+Once created, you can load knowledge bases into your TmuxAI session:
+
+```bash
+# List available knowledge bases
+TmuxAI » /kb
+Available knowledge bases:
+  [ ] docker-workflows
+  [ ] git-conventions
+  [ ] testing-procedures
+
+# Load a knowledge base
+TmuxAI » /kb load docker-workflows
+✓ Loaded knowledge base: docker-workflows (850 tokens)
+
+# List again to see loaded status
+TmuxAI » /kb
+Available knowledge bases:
+  [✓] docker-workflows (850 tokens)
+  [ ] git-conventions
+  [ ] testing-procedures
+
+Loaded: 1 KB(s), 850 tokens
+
+# Unload a knowledge base
+TmuxAI » /kb unload docker-workflows
+✓ Unloaded knowledge base: docker-workflows
+
+# Unload all knowledge bases
+TmuxAI » /kb unload --all
+✓ Unloaded all knowledge bases (2 KB(s))
+```
+
+You can also load knowledge bases directly from the command line when starting TmuxAI:
+
+```bash
+# Load single knowledge base
+tmuxai --kb docker-workflows
+
+# Load multiple knowledge bases (comma-separated)
+tmuxai --kb docker-workflows,git-conventions
+```
+
+### Auto-Loading Knowledge Bases
+
+You can configure knowledge bases to load automatically on startup by adding them to your `~/.config/tmuxai/config.yaml`:
+
+```yaml
+knowledge_base:
+  auto_load:
+    - docker-workflows
+    - git-conventions
+  # path: /custom/path  # Optional: use custom KB directory
+```
+
+**Important Notes:**
+- Loaded knowledge bases consume tokens from your context budget
+- Use `/info` to see how many tokens your loaded KBs are using
+- Knowledge bases are injected after the system prompt but before conversation history
+- Unloading a KB removes it from future messages immediately
+
+## Model Configuration
+
+TmuxAI supports configuring multiple AI model configurations and easily switching between them. This allows you to define different AI providers, models, and settings for various use cases.
+
+### Setting Up Multiple Models
+
+Configure multiple AI models in your `~/.config/tmuxai/config.yaml`:
+
+```yaml
+# Optional: specify which model to use by default
+# If not set, the first model in the list will be used automatically
+default_model: "fast"
+
+models:
+  fast:
+    provider: "openrouter"
+    model: "anthropic/claude-haiku-4.5"
+    api_key: "sk-or-your-openrouter-key"
+
+  smart:
+    provider: "openrouter"
+    model: "google/gemini-2.5-prod"
+    api_key: "sk-or-your-openrouter-key"
+
+  # You can use any chat completion compatible endpoint as base_url
+  anthropic:
+    provider: "openrouter"
+    model: "claude-3-5-sonnet-20241022"
+    api_key: "your-anthropic-api-key"
+    base_url: "https://api.anthropic.com"
+
+  local-llama:
+    provider: "openrouter"
+    model: "gemma3:1b"
+    api_key: "sk-or-your-openrouter-key"
+    base_url: http://localhost:11434/v1
+
+  # Responses API
+  codex:
+    provider: "openai"
+    model: "gpt-5-codex"
+    api_key: "sk-or-your-openrouter-key"
+
+  azure-gpt4:
+    provider: "azure"
+    model: "gpt-4o"
+    api_key: "your-azure-openai-api-key"
+    api_base: "https://your-resource.openai.azure.com/"
+    api_version: "2025-04-01-preview"
+    deployment_name: "gpt-4o"
+```
+
+**Supported Providers:**
+- `openai` - OpenAI Responses API (GPT-4, GPT-5, etc.)
+- `openrouter` - Universal OpenAI-Compatible Gateway (access to any OpenAI-compatible provider)
+- `azure` - Azure OpenAI Chat Completions API
+
+**OpenRouter Universal Access Examples:**
+```yaml
+models:
+```
+
+### Switching Between Models
+
+You can switch between configured models in multiple ways:
+
+**CLI Flag:**
+```bash
+# Use a specific model for the session
+tmuxai --model gpt4
+tmuxai --model claude-sonnet "Help me debug this code"
+```
+
+**Interactive Commands:**
+```bash
+# List available models and see current selection
+TmuxAI » /model
+
+Available Models
+  [ ] claude-sonnet (openrouter: anthropic/claude-3.5-sonnet)
+  [ ] fast (openrouter: anthropic/claude-haiku-4.5)
+  [✓] smart (openrouter: google/gemini-2.5-prod)
+  [ ] local-llama (openrouter: meta-llama/llama-3.1-8b-instruct:free)
+
+Current Model:
+  Configuration: smart
+  Provider: openrouter
+  Model: google/gemini-2.5-prod
+
+# Switch to a different model
+TmuxAI » /model claude-sonnet
+✓ Switched to claude-sonnet (openrouter: anthropic/claude-3.5-sonnet)
+
+# Status bar shows current model when using non-default
+TmuxAI [claude-sonnet] [▶] »
+```
+
+**Environment Variables:**
+```bash
+export TMUXAI_DEFAULT_MODEL="gpt4"
+```
+
+### Key Features
+
+- **Auto-selection**: First model in list is used automatically when no default is set
+- **Status Indicator**: Current model appears in status bar when using non-default model
+- **Seamless Switching**: No need to restart - models switch instantly during your session
+
+### Quick Start
+
+1. **No Setup Required**: TmuxAI starts without any configuration
+2. **Configure When Ready**: Add your first message to see helpful setup instructions
+3. **Add Models**: Configure multiple models in `~/.config/tmuxai/config.yaml`
+4. **Start Using**: Switch models with `/model <name>` or `tmuxai --model <name>`
+
 ## Core Commands
 
 | Command                     | Description                                                      |
@@ -296,14 +525,20 @@ TmuxAI ❯ /squash
 | `/reset`                    | Clear chat history and reset all panes.                          |
 | `/config`                   | View current configuration settings                              |
 | `/config set <key> <value>` | Override configuration for current session                       |
+| `/model`                    | List available models and show current active model              |
+| `/model <name>`             | Switch to a different model configuration                        |
 | `/squash`                   | Manually trigger context summarization                           |
-| `/prepare [shell]`          | Initialize Prepared Mode for the Exec Pane (e.g., bash, zsh)     |
+| `/prepare [shell]`          | Initialize Prepared Mode for the Exec Pane (e.g., bash, zsh)    |
 | `/watch <description>`      | Enable Watch Mode with specified goal                            |
+| `/kb`                       | List available knowledge bases with loaded status                |
+| `/kb load <name>`           | Load a knowledge base into conversation context                  |
+| `/kb unload <name>`         | Unload a specific knowledge base                                 |
+| `/kb unload --all`          | Unload all knowledge bases                                       |
 | `/exit`                     | Exit TmuxAI                                                      |
 
 ## Command-Line Usage
 
-You can start `tmuxai` with an initial message or task file from the command line:
+You can start `tmuxai` with an initial message, task file, model configuration, or knowledge bases from the command line:
 
 - **Direct Message:**
 
@@ -314,6 +549,27 @@ You can start `tmuxai` with an initial message or task file from the command lin
 - **Task File:**
   ```sh
   tmuxai -f path/to/your_task.txt
+  ```
+
+- **Specify Model:**
+  ```sh
+  # Use a specific model configuration
+  tmuxai --model gpt4 "Write a Go function"
+  tmuxai --model claude-sonnet
+  ```
+
+- **Load Knowledge Bases:**
+  ```sh
+  # Single knowledge base
+  tmuxai --kb docker-workflows
+
+  # Multiple knowledge bases
+  tmuxai --kb docker-workflows,git-conventions
+  ```
+
+- **Combine Options:**
+  ```sh
+  tmuxai --model gpt4 --kb docker-workflows "Debug this Docker issue"
   ```
 
 ## Configuration
@@ -328,92 +584,44 @@ For a sample configuration file, see [config.example.yaml](https://github.com/al
 All configuration options can also be set via environment variables, which take precedence over the config file. Use the prefix `TMUXAI_` followed by the uppercase configuration key:
 
 ```bash
-# Examples
+# General settings
 export TMUXAI_DEBUG=true
 export TMUXAI_MAX_CAPTURE_LINES=300
-export TMUXAI_OPENROUTER_API_KEY="your-api-key-here"
-export TMUXAI_OPENROUTER_MODEL="..."
-export TMUXAI_AZURE_OPENAI_API_KEY="your-azure-api-key"
-export TMUXAI_AZURE_OPENAI_API_BASE="https://your-resource.openai.azure.com/"
-export TMUXAI_AZURE_OPENAI_API_VERSION="2025-04-01-preview"
-export TMUXAI_AZURE_OPENAI_DEPLOYMENT_NAME="gpt-4o"
+export TMUXAI_MAX_CONTEXT_SIZE=150000
+
+# Quick setup with environment variables (alternative to model configurations)
+export TMUXAI_OPENAI_API_KEY="your-openai-api-key-here"
+export TMUXAI_OPENAI_MODEL="gpt-4"
+export TMUXAI_OPENROUTER_API_KEY="your-openrouter-api-key-here"
 ```
 
 You can also use environment variables directly within your configuration file values. The application will automatically expand these variables when loading the configuration:
 
 ```yaml
 # Example config.yaml with environment variable expansion
-openrouter:
+openai:
   api_key: "${OPENAI_API_KEY}"
-  base_url: https://api.openai.com/v1
+  model: "${OPENAI_MODEL:-gpt-4}"
+
+openrouter:
+  api_key: "${OPENROUTER_API_KEY}"
+  base_url: "${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}"
 ```
 
 ### Session-Specific Configuration
 
-You can override some configuration values for your current TmuxAI session using the `/config` command:
+You can override configuration values for your current TmuxAI session using the `/config` command:
 
 ```bash
 # View current configuration
 TmuxAI ❯ /config
 
 # Override a configuration value for this session
-TmuxAI ❯ /config set max_capture_lines 300
-TmuxAI ❯ /config set openrouter.model gpt-4o-mini
+TmuxAI » /config set max_capture_lines 300
+TmuxAI » /config set wait_interval 3
 ```
 
 These changes will persist only for the current session and won't modify your config file.
-
-### Using Other AI Providers
-
-OpenRouter is OpenAI API-compatible, so you can direct TmuxAI at OpenAI or any other OpenAI API-compatible endpoint by customizing the `base_url`.
-
-For OpenAI:
-
-```yaml
-openrouter:
-  api_key: sk-proj-XXX
-  model: o4-mini-2025-04-16
-  base_url: https://api.openai.com/v1
-```
-
-For Anthropic’s Claude:
-
-```yaml
-openrouter:
-  api_key: sk-proj-XXX
-  model: claude-3-7-sonnet-20250219
-  base_url: https://api.anthropic.com/v1
-```
-
-For Gemini:
-
-```yaml
-openrouter:
-  model: gemini-2.5-pro-preview-06-05
-  api_key: XXXX
-  base_url: https://generativelanguage.googleapis.com/v1beta/openai/
-```
-
-For local Ollama:
-
-```yaml
-openrouter:
-  api_key: api-key
-  model: gemma3:1b
-  base_url: http://localhost:11434/v1
-```
-
-For Azure OpenAI:
-
-```yaml
-azure_openai:
-  api_key: "your-azure-openai-key"
-  api_base: "https://your-resource.openai.azure.com/"
-  api_version: "2025-04-01-preview"
-  deployment_name: "gpt-4o"
-```
-
-_Prompts are currently tuned for Gemini 2.5 by default; behavior with other models may vary._
 
 ## Contributing
 

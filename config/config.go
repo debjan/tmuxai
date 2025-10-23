@@ -12,22 +12,33 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	Debug                 bool              `mapstructure:"debug"`
-	MaxCaptureLines       int               `mapstructure:"max_capture_lines"`
-	MaxContextSize        int               `mapstructure:"max_context_size"`
-	WaitInterval          int               `mapstructure:"wait_interval"`
-	SendKeysConfirm       bool              `mapstructure:"send_keys_confirm"`
-	PasteMultilineConfirm bool              `mapstructure:"paste_multiline_confirm"`
-	ExecConfirm           bool              `mapstructure:"exec_confirm"`
-	WhitelistPatterns     []string          `mapstructure:"whitelist_patterns"`
-	BlacklistPatterns     []string          `mapstructure:"blacklist_patterns"`
-	OpenRouter            OpenRouterConfig  `mapstructure:"openrouter"`
-	AzureOpenAI           AzureOpenAIConfig `mapstructure:"azure_openai"`
-	Prompts               PromptsConfig     `mapstructure:"prompts"`
+	Debug                 bool                  `mapstructure:"debug"`
+	MaxCaptureLines       int                   `mapstructure:"max_capture_lines"`
+	MaxContextSize        int                   `mapstructure:"max_context_size"`
+	WaitInterval          int                   `mapstructure:"wait_interval"`
+	SendKeysConfirm       bool                  `mapstructure:"send_keys_confirm"`
+	PasteMultilineConfirm bool                  `mapstructure:"paste_multiline_confirm"`
+	ExecConfirm           bool                  `mapstructure:"exec_confirm"`
+	WhitelistPatterns     []string              `mapstructure:"whitelist_patterns"`
+	BlacklistPatterns     []string              `mapstructure:"blacklist_patterns"`
+	OpenRouter            OpenRouterConfig      `mapstructure:"openrouter"`
+	OpenAI                OpenAIConfig          `mapstructure:"openai"`
+	AzureOpenAI           AzureOpenAIConfig     `mapstructure:"azure_openai"`
+	DefaultModel          string                 `mapstructure:"default_model"`
+	Models                map[string]ModelConfig  `mapstructure:"models"`
+	Prompts               PromptsConfig         `mapstructure:"prompts"`
+	KnowledgeBase         KnowledgeBaseConfig   `mapstructure:"knowledge_base"`
 }
 
 // OpenRouterConfig holds OpenRouter API configuration
 type OpenRouterConfig struct {
+	APIKey  string `mapstructure:"api_key"`
+	Model   string `mapstructure:"model"`
+	BaseURL string `mapstructure:"base_url"`
+}
+
+// OpenAIConfig holds OpenAI API configuration
+type OpenAIConfig struct {
 	APIKey  string `mapstructure:"api_key"`
 	Model   string `mapstructure:"model"`
 	BaseURL string `mapstructure:"base_url"`
@@ -41,12 +52,32 @@ type AzureOpenAIConfig struct {
 	DeploymentName string `mapstructure:"deployment_name"`
 }
 
+
+// ModelConfig holds a single model configuration
+type ModelConfig struct {
+	Provider string `mapstructure:"provider"`
+	Model   string `mapstructure:"model"`
+	APIKey  string `mapstructure:"api_key"`
+	BaseURL string `mapstructure:"base_url"`
+
+	// Azure-specific fields
+	APIBase        string `mapstructure:"api_base"`
+	APIVersion     string `mapstructure:"api_version"`
+	DeploymentName string `mapstructure:"deployment_name"`
+}
+
 // PromptsConfig holds customizable prompt templates
 type PromptsConfig struct {
 	BaseSystem            string `mapstructure:"base_system"`
 	ChatAssistant         string `mapstructure:"chat_assistant"`
 	ChatAssistantPrepared string `mapstructure:"chat_assistant_prepared"`
 	Watch                 string `mapstructure:"watch"`
+}
+
+// KnowledgeBaseConfig holds knowledge base configuration
+type KnowledgeBaseConfig struct {
+	AutoLoad []string `mapstructure:"auto_load"`
+	Path     string   `mapstructure:"path"`
 }
 
 // DefaultConfig returns a configuration with default values
@@ -65,10 +96,19 @@ func DefaultConfig() *Config {
 			BaseURL: "https://openrouter.ai/api/v1",
 			Model:   "google/gemini-2.5-flash-preview",
 		},
+		OpenAI: OpenAIConfig{
+			BaseURL: "https://api.openai.com/v1",
+		},
 		AzureOpenAI: AzureOpenAIConfig{},
+		DefaultModel: "",
+	Models:       make(map[string]ModelConfig),
 		Prompts: PromptsConfig{
 			BaseSystem:    ``,
 			ChatAssistant: ``,
+		},
+		KnowledgeBase: KnowledgeBaseConfig{
+			AutoLoad: []string{},
+			Path:     "",
 		},
 	}
 }
@@ -161,6 +201,25 @@ func GetConfigDir() (string, error) {
 func GetConfigFilePath(filename string) string {
 	configDir, _ := GetConfigDir()
 	return filepath.Join(configDir, filename)
+}
+
+// GetKBDir returns the path to the knowledge base directory
+func GetKBDir() string {
+	// Try to load config to check for custom path
+	cfg, err := Load()
+	if err == nil && cfg.KnowledgeBase.Path != "" {
+		// Use custom path if specified
+		return cfg.KnowledgeBase.Path
+	}
+
+	// Default to ~/.config/tmuxai/kb/
+	configDir, _ := GetConfigDir()
+	kbDir := filepath.Join(configDir, "kb")
+
+	// Create KB directory if it doesn't exist
+	_ = os.MkdirAll(kbDir, 0o755)
+
+	return kbDir
 }
 
 func TryInferType(key, value string) any {

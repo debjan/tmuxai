@@ -248,7 +248,17 @@ main() {
           ;;
   esac
   info ""
-  info "To get started, set the TMUXAI_OPENROUTER_API_KEY environment variable or add it to the config: ${CONFIG_DIR}/config.yaml"
+  info "Post-installation setup:"
+  info "  1. Create ${CONFIG_DIR}/config.yaml"
+  info "  2. Add a minimal configuration like:"
+  info "       models:"
+  info "         primary:"
+  info "           provider: openrouter  # openrouter, openai or azure"
+  info "           model: anthropic/claude-haiku-4.5"
+  info "           api_key: sk-your-api-key"
+  info "  3. Launch tmuxai with: tmuxai"
+  info ""
+  info "See README.md for more details on configuring tmuxai."
 }
 
 main "$@"
