@@ -128,7 +128,7 @@ func (m *Manager) GetPrompt() string {
 	stateColor := color.New(color.BgHiGreen, color.FgBlack)
 	arrowColor := color.New(color.BgBlack, color.FgHiGreen)
 	// sepColor := color.New(color.BgGreen, color.FgHiGreen)
-	modelColor := color.New(color.BgGreen, color.FgBlack)
+	modelColor := color.New(color.BgGreen, color.FgHiBlue)
 
 	var stateSymbol string
 	switch m.Status {
@@ -160,7 +160,7 @@ func (m *Manager) GetPrompt() string {
 
 		// Show model if current is different from expected
 		if currentModel != "" && currentModel != expectedModel {
-			prompt += " " + modelColor.Sprint("["+currentModel+"]")
+			prompt += modelColor.Sprint(" "+currentModel+" ")
 		}
 	}
 
