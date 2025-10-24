@@ -461,24 +461,8 @@ models:
 
 **Supported Providers:**
 - `openai` - OpenAI Responses API (GPT-4, GPT-5, etc.)
-- `openrouter` - Universal OpenAI-Compatible Gateway (access to any OpenAI-compatible provider)
-- `azure` - Azure OpenAI Chat Completions API
-
-**OpenRouter Universal Access Examples:**
-```yaml
-models:
-```
-
-### Switching Between Models
-
-You can switch between configured models in multiple ways:
-
-**CLI Flag:**
-```bash
-# Use a specific model for the session
-tmuxai --model gpt4
-tmuxai --model claude-sonnet "Help me debug this code"
-```
+- `openrouter` - Universal Chat Completion API, defaults to openrouter base url
+- `azure` - Azure Chat Completions API
 
 **Interactive Commands:**
 ```bash
