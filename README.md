@@ -485,26 +485,8 @@ TmuxAI » /model claude-sonnet
 ✓ Switched to claude-sonnet (openrouter: anthropic/claude-3.5-sonnet)
 
 # Status bar shows current model when using non-default
-TmuxAI [claude-sonnet] [▶] »
+TmuxAI [claude-sonnet] »
 ```
-
-**Environment Variables:**
-```bash
-export TMUXAI_DEFAULT_MODEL="gpt4"
-```
-
-### Key Features
-
-- **Auto-selection**: First model in list is used automatically when no default is set
-- **Status Indicator**: Current model appears in status bar when using non-default model
-- **Seamless Switching**: No need to restart - models switch instantly during your session
-
-### Quick Start
-
-1. **No Setup Required**: TmuxAI starts without any configuration
-2. **Configure When Ready**: Add your first message to see helpful setup instructions
-3. **Add Models**: Configure multiple models in `~/.config/tmuxai/config.yaml`
-4. **Start Using**: Switch models with `/model <name>` or `tmuxai --model <name>`
 
 ## Core Commands
 
