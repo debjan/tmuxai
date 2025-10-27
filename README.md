@@ -316,16 +316,16 @@ The Knowledge Base feature allows you to create pre-defined context files in mar
 
 ### Creating Knowledge Bases
 
-Knowledge bases are markdown files stored in `~/.config/tmuxai/kb/`. To create one:
+Knowledge bases are text files stored in `~/.config/tmuxai/kb/`. To create one:
 
 1. Create the knowledge base directory if it doesn't exist:
    ```bash
    mkdir -p ~/.config/tmuxai/kb
    ```
 
-2. Create a markdown file with your knowledge base content:
+2. Create a file with your knowledge base content:
    ```bash
-   cat > ~/.config/tmuxai/kb/docker-workflows.md << 'EOF'
+   cat > ~/.config/tmuxai/kb/docker-workflows << 'EOF'
    # Docker Workflows
 
    ## Common Commands
