@@ -10,8 +10,10 @@ max_capture_lines: 200
 # Wait interval when exec pane is considered busy (used in observe and watch modes)
 wait_interval: 5
 
-default_model: "gemini-flash" # If empty uses the first one
+# If empty uses the first model alphabetically
+default_model: "fast"
 
+# Define at least one model
 models:
   fast:
     provider: "openrouter"
@@ -59,11 +61,13 @@ send_keys_confirm: true
 # Confirm before AI pastes a multiline text
 paste_multiline_confirm: true
 
+# If matched, skips confirmation prompt
 whitelist_patterns:
   - '^find(\s+.*)?$'
   - '^pwd\s*$'
   - '^cat(\s+.*)?$'
 
+# Always shows confirmation prompt for those patterns
 blacklist_patterns:
   - 'rm\s+'
   - 'mv\s+'
