@@ -104,12 +104,32 @@ var (
 
 	// Dangerous patterns - major risks that require user confirmation
 	dangerousPatterns = []Pattern{
+		// Detect explicit chaining/substitution and scoped redirects (avoid overbroad [<>])
+		{regexp.MustCompile(`;`)},                             // Semicolon command chaining
+		{regexp.MustCompile(`(?m)\s&\s|&$`)},                  // Background job operator (standalone &)
+		{regexp.MustCompile(`\$\(`)},                          // Command substitution $()
+		{regexp.MustCompile("`")},                              // Command substitution (legacy) ``
+		{regexp.MustCompile(`\|\|`)},                         // Logical OR chaining
+		{regexp.MustCompile(`&&`)},                           // Logical AND chaining
+		// Redirect operator detection (>, >>, <, and fd>), scoped to redirect tokens so we don't match stray angle brackets
+		{regexp.MustCompile(`(?:^|\s|[a-zA-Z0-9])(?:[0-9]*[<>]{1,2})\s*[^&|;]+`)},
+		// Specific redirect to dangerous system paths (write redirects targeting system dirs)
+		{regexp.MustCompile(`[>\s]+/(?:etc|dev|proc|sys|boot|root)(?:/|$)`)},
+		
+		// NEW: Also add the other fixes
+		{regexp.MustCompile(`\bfind\b.*-exec\b`)}, // find with -exec (potentially dangerous execution)
+		{regexp.MustCompile(`\b(curl|wget)\b.*\s(-o|--output|-O)\b`)},
+		{regexp.MustCompile(`\bsed\b.*[\s;]e\b`)},
+
+		// chmod patterns - detect execute permission grants
+		{regexp.MustCompile(`\bchmod\s+.*(\+x|=[^,]*x)`)},      // chmod +x or symbolic grant of execute
+		{regexp.MustCompile(`\bchmod\s+[0-7]*[1357][0-7]{2}\b`)}, // chmod with execute bits (1,3,5,7)
+
 		// Destructive filesystem operations (most common/dangerous)
 		{regexp.MustCompile(`\brm\s+-[rR]f`)},        // rm -rf
 		{regexp.MustCompile(`\brm\s+.*-[rR].*f`)},    // rm with -r and -f in any order
 		{regexp.MustCompile(`\brm\s+(-[rR]\s+)?/`)},  // rm targeting root paths
 		{regexp.MustCompile(`\bfind\b.*-delete\b`)},  // find with -delete flag
-		{regexp.MustCompile(`\bfind\b.*-exec\s+rm`)}, // find with rm execution
 		{regexp.MustCompile(`\bxargs\s+rm\b`)},       // xargs with rm (mass deletion)
 		{regexp.MustCompile(`\bmkfs\b`)},             // Format filesystem
 		{regexp.MustCompile(`\bdd\s+.*of=/dev/`)},    // Write to device
@@ -117,16 +137,13 @@ var (
 		{regexp.MustCompile(`\bparted\b`)},           // Partition editor
 		{regexp.MustCompile(`:\s*,\s*\$\s*d\b`)},     // dd in sed (delete all lines)
 		{regexp.MustCompile(`\btruncate\s+-s\s*0`)},  // Truncate files to zero size
-		{regexp.MustCompile(`>\s*/dev/sd[a-z]`)},     // Writing directly to disk devices
 
 		// Privilege escalation (very common)
 		{regexp.MustCompile(`\bsudo\b`)},
 		{regexp.MustCompile(`\bsu\s`)},
 		{regexp.MustCompile(`\bdoas\b`)}, // OpenBSD sudo alternative
 
-		// Dangerous permissions
-		{regexp.MustCompile(`\bchmod\s+[0-7]*[67][0-7]*\b`)}, // chmod with exec bits
-		{regexp.MustCompile(`\bchmod\s+777`)},                // chmod 777 (world writable)
+		// Dangerous ownership changes
 		{regexp.MustCompile(`\bchown\s+.*root`)},             // chown to root
 
 		// Code execution risks
@@ -144,7 +161,8 @@ var (
 		{regexp.MustCompile(`\b:\(\)\s*\{.*:\|:`)},         // fork bomb pattern
 
 		// System critical modifications
-		{regexp.MustCompile(`>\s*/etc/`)},                                 // Writing to system config
+		// REMOVED: Redundant, covered by new `[<>]` rule
+		// {regexp.MustCompile(`>\s*/etc/`)},                                 // Writing to system config
 		{regexp.MustCompile(`\b(systemctl|service)\s+(stop|disable|mask)`)}, // Stop/disable services
 		{regexp.MustCompile(`\breboot\b`)},                                // Restart system
 		{regexp.MustCompile(`\bshutdown\b`)},                              // Shutdown system
@@ -189,6 +207,7 @@ var (
 
 	}
 )
+
 
 func ScoreCommand(cmd string) RiskAssessment {
 	assessment := RiskAssessment{
