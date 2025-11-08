@@ -127,8 +127,6 @@ func (m *Manager) GetPrompt() string {
 	tmuxaiColor := color.New(color.BgGreen, color.FgBlack)
 	stateColor := color.New(color.BgHiGreen, color.FgBlack)
 	arrowColor := color.New(color.FgHiGreen)
-	// sepColor := color.New(color.BgGreen, color.FgHiGreen)
-	// modelColor := color.New(color.BgGreen, color.FgHiBlue)
 
 	var stateSymbol string
 	switch m.Status {
@@ -146,8 +144,6 @@ func (m *Manager) GetPrompt() string {
 	}
 
 	prompt := tmuxaiColor.Sprint("")
-	// prompt += sepColor.Sprint("")
-	// Show current model if it's not the default or first available model
 
 	if stateSymbol != "" {
 		prompt += stateColor.Sprint(" " + stateSymbol)
