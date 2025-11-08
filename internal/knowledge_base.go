@@ -14,7 +14,7 @@ import (
 // loadKB loads a knowledge base file by name
 func (m *Manager) loadKB(name string) error {
 	kbDir := config.GetKBDir()
-	kbPath := filepath.Join(kbDir, name+".md")
+	kbPath := filepath.Join(kbDir, name)
 
 	content, err := os.ReadFile(kbPath)
 	if err != nil {
@@ -52,9 +52,8 @@ func (m *Manager) listKBs() ([]string, error) {
 
 	var kbs []string
 	for _, entry := range entries {
-		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".md") {
-			name := strings.TrimSuffix(entry.Name(), ".md")
-			kbs = append(kbs, name)
+		if !entry.IsDir() {
+			kbs = append(kbs, entry.Name())
 		}
 	}
 

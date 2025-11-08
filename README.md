@@ -180,7 +180,7 @@ TmuxAI operates by default in "observe mode". Here's how the interaction flow wo
 5. **If a command is suggested**, TmuxAI will:
 
    - Check if the command matches whitelist or blacklist patterns
-   - Ask for your confirmation (unless the command is whitelisted)
+   - Ask for your confirmation (unless the command is whitelisted). The confirmation prompt includes a risk indicator (✓ safe, ? unknown, ! danger) for guidance only - always review commands carefully as the risk scoring is not exhaustive and should not be relied upon for security decisions
    - Execute the command in the designated Exec Pane if approved
    - Wait for the `wait_interval` (default: 5 seconds) (You can pause/resume the countdown with `space` or `enter` to stop the countdown)
    - Capture the new output from all panes
@@ -316,16 +316,16 @@ The Knowledge Base feature allows you to create pre-defined context files in mar
 
 ### Creating Knowledge Bases
 
-Knowledge bases are markdown files stored in `~/.config/tmuxai/kb/`. To create one:
+Knowledge bases are text files stored in `~/.config/tmuxai/kb/`. To create one:
 
 1. Create the knowledge base directory if it doesn't exist:
    ```bash
    mkdir -p ~/.config/tmuxai/kb
    ```
 
-2. Create a markdown file with your knowledge base content:
+2. Create a file with your knowledge base content:
    ```bash
-   cat > ~/.config/tmuxai/kb/docker-workflows.md << 'EOF'
+   cat > ~/.config/tmuxai/kb/docker-workflows << 'EOF'
    # Docker Workflows
 
    ## Common Commands
@@ -411,7 +411,7 @@ Configure multiple AI models in your `~/.config/tmuxai/config.yaml`:
 
 ```yaml
 # Optional: specify which model to use by default
-# If not set, the first model in the list will be used automatically
+# If not set, the first model alphabetically will be used automatically
 default_model: "fast"
 
 models:
@@ -431,6 +431,12 @@ models:
     model: "claude-3-5-sonnet-20241022"
     api_key: "your-anthropic-api-key"
     base_url: "https://api.anthropic.com"
+
+  github-copilot:
+    provider: "openrouter"
+    model: "claude-sonnet-4.5"
+    api_key: "your-github-copilot-api-key"
+    base_url: "https://api.githubcopilot.com"
 
   local-llama:
     provider: "openrouter"
@@ -455,24 +461,8 @@ models:
 
 **Supported Providers:**
 - `openai` - OpenAI Responses API (GPT-4, GPT-5, etc.)
-- `openrouter` - Universal OpenAI-Compatible Gateway (access to any OpenAI-compatible provider)
-- `azure` - Azure OpenAI Chat Completions API
-
-**OpenRouter Universal Access Examples:**
-```yaml
-models:
-```
-
-### Switching Between Models
-
-You can switch between configured models in multiple ways:
-
-**CLI Flag:**
-```bash
-# Use a specific model for the session
-tmuxai --model gpt4
-tmuxai --model claude-sonnet "Help me debug this code"
-```
+- `openrouter` - Universal Chat Completion API, defaults to openrouter base url
+- `azure` - Azure Chat Completions API
 
 **Interactive Commands:**
 ```bash
@@ -495,26 +485,8 @@ TmuxAI » /model claude-sonnet
 ✓ Switched to claude-sonnet (openrouter: anthropic/claude-3.5-sonnet)
 
 # Status bar shows current model when using non-default
-TmuxAI [claude-sonnet] [▶] »
+TmuxAI [claude-sonnet] »
 ```
-
-**Environment Variables:**
-```bash
-export TMUXAI_DEFAULT_MODEL="gpt4"
-```
-
-### Key Features
-
-- **Auto-selection**: First model in list is used automatically when no default is set
-- **Status Indicator**: Current model appears in status bar when using non-default model
-- **Seamless Switching**: No need to restart - models switch instantly during your session
-
-### Quick Start
-
-1. **No Setup Required**: TmuxAI starts without any configuration
-2. **Configure When Ready**: Add your first message to see helpful setup instructions
-3. **Add Models**: Configure multiple models in `~/.config/tmuxai/config.yaml`
-4. **Start Using**: Switch models with `/model <name>` or `tmuxai --model <name>`
 
 ## Core Commands
 
