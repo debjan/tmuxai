@@ -12,6 +12,8 @@
     <a href="https://github.com/alvinunreal/tmuxai/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/alvinunreal/tmuxai?style=flat-square"></a>
     <a href="https://github.com/alvinunreal/tmuxai/issues"><img alt="Issues" src="https://img.shields.io/github/issues/alvinunreal/tmuxai?style=flat-square"></a>
     <br/>
+    <a href="https://moltfounders.com/project/aea92cc8-79e6-4050-bf8c-65913b22aff0"><img src="https://moltfounders.com/badges/4.png" alt="MoltFounders" height="25"></a>
+    <br/>
     <br/>
     <br/>
     <a href="https://tmuxai.dev/screenshots" target="_blank">Screenshots</a> |
