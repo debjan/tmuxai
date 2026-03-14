@@ -11,21 +11,69 @@ import (
 	"github.com/alvinunreal/tmuxai/logger"
 )
 
-// TmuxCreateNewPane creates a new horizontal split pane in the specified window and returns its ID
-func TmuxCreateNewPane(target string) (string, error) {
-	cmd := exec.Command("tmux", "split-window", "-d", "-h", "-t", target, "-P", "-F", "#{pane_id}")
+// TmuxCreateNewPane creates a new split pane in the specified window and returns its ID.
+func TmuxCreateNewPane(target string, splitArgs []string) (string, error) {
+	args, err := buildSplitWindowArgs(target, splitArgs)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := exec.Command("tmux", args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		logger.Error("Failed to create tmux pane: %v, stderr: %s", err, stderr.String())
 		return "", err
 	}
 
 	paneId := strings.TrimSpace(stdout.String())
+	if paneId == "" {
+		return "", fmt.Errorf("tmux split-window returned empty pane id")
+	}
+
 	return paneId, nil
+}
+
+var reservedSplitWindowArgs = map[string]struct{}{
+	"-t": {},
+	"-P": {},
+	"-F": {},
+}
+
+// Flags that take a value argument in `tmux split-window`.
+// Used to skip the value when checking for reserved-flag conflicts.
+// -F is also reserved (handled by us), but listed here so its value is skipped.
+// Reference: tmux 3.6a split-window [-bdefhIPvZ] [-c dir] [-e env] [-F fmt] [-l size] [-t target]
+var splitWindowFlagsWithValues = map[string]struct{}{
+	"-c": {},
+	"-e": {},
+	"-l": {},
+}
+
+func buildSplitWindowArgs(target string, splitArgs []string) ([]string, error) {
+	args := []string{"split-window"}
+	skipNext := false
+	for _, arg := range splitArgs {
+		if skipNext {
+			args = append(args, arg)
+			skipNext = false
+			continue
+		}
+		if strings.HasPrefix(arg, "-") {
+			if _, reserved := reservedSplitWindowArgs[arg]; reserved {
+				return nil, fmt.Errorf("exec_split_args cannot include reserved tmux flag %q", arg)
+			}
+			if _, needsValue := splitWindowFlagsWithValues[arg]; needsValue {
+				skipNext = true
+			}
+		}
+		args = append(args, arg)
+	}
+	args = append(args, "-t", target, "-P", "-F", "#{pane_id}")
+	return args, nil
 }
 
 // TmuxPanesDetails gets details for all panes in a target window
