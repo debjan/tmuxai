@@ -14,6 +14,13 @@
     <br/>
     <a href="https://moltfounders.com/jobs/249106d7-782a-4b35-8420-c86c1646e569"><img src="https://moltfounders.com/badges/4.png" alt="MoltFounders" height="25"></a>
     <br/>
+    <sub>by <b>Boring Dystopia Development</b></sub>
+    <br/>
+    <br/>
+    <a href="https://boringdystopia.ai/"><img src="https://img.shields.io/badge/boringdystopia.ai-111111?style=for-the-badge&logo=vercel&logoColor=white" alt="boringdystopia.ai"></a>&nbsp;
+    <a href="https://x.com/alvinunreal"><img src="https://img.shields.io/badge/X-@alvinunreal-000000?style=for-the-badge&logo=x&logoColor=white" alt="X @alvinunreal"></a>&nbsp;
+    <a href="https://t.me/boringdystopiadevelopment"><img src="https://img.shields.io/badge/Telegram-Join%20channel-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Join channel"></a>
+    <br/>
     <br/>
     <br/>
     <a href="https://tmuxai.dev/screenshots" target="_blank">Screenshots</a> |
