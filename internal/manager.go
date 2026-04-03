@@ -140,7 +140,7 @@ func (m *Manager) GetConfig() *config.Config {
 // getPrompt returns the prompt string with color
 func (m *Manager) GetPrompt() string {
 	tmuxaiColor := color.New(color.FgGreen, color.Bold)
-	arrowColor := color.New(color.FgYellow, color.Bold)
+	// arrowColor := color.New(color.FgYellow, color.Bold)
 	stateColor := color.New(color.FgMagenta, color.Bold)
 	modelColor := color.New(color.FgCyan, color.Bold)
 
