@@ -16,6 +16,7 @@ var AllowedConfigKeys = []string{
 	"send_keys_confirm",
 	"paste_multiline_confirm",
 	"exec_confirm",
+	"yolo",
 	"openrouter.model",
 	"openai.api_key",
 	"openai.model",
@@ -58,6 +59,9 @@ func (m *Manager) GetWaitInterval() int {
 }
 
 func (m *Manager) GetSendKeysConfirm() bool {
+	if m.GetYolo() {
+		return false
+	}
 	if override, exists := m.SessionOverrides["send_keys_confirm"]; exists {
 		if val, ok := override.(bool); ok {
 			return val
@@ -67,6 +71,9 @@ func (m *Manager) GetSendKeysConfirm() bool {
 }
 
 func (m *Manager) GetPasteMultilineConfirm() bool {
+	if m.GetYolo() {
+		return false
+	}
 	if override, exists := m.SessionOverrides["paste_multiline_confirm"]; exists {
 		if val, ok := override.(bool); ok {
 			return val
@@ -76,12 +83,24 @@ func (m *Manager) GetPasteMultilineConfirm() bool {
 }
 
 func (m *Manager) GetExecConfirm() bool {
+	if m.GetYolo() {
+		return false
+	}
 	if override, exists := m.SessionOverrides["exec_confirm"]; exists {
 		if val, ok := override.(bool); ok {
 			return val
 		}
 	}
 	return m.Config.ExecConfirm
+}
+
+func (m *Manager) GetYolo() bool {
+	if override, exists := m.SessionOverrides["yolo"]; exists {
+		if val, ok := override.(bool); ok {
+			return val
+		}
+	}
+	return m.Config.Yolo
 }
 
 func (m *Manager) GetOpenRouterModel() string {
@@ -214,17 +233,17 @@ func (m *Manager) hasValidAIConfiguration() bool {
 	// Check new model configurations first
 	availableModels := m.GetAvailableModels()
 	if len(availableModels) > 0 {
-		// Check if any model has an API key
+		// Check if any model has an API key or is a keyless provider
 		for _, modelName := range availableModels {
 			if modelConfig, exists := m.GetModelConfig(modelName); exists {
-				if modelConfig.APIKey != "" {
+				if modelConfig.APIKey != "" || modelConfig.Provider == "github-copilot" {
 					return true
 				}
 			}
 		}
-		// Also check if current model has API key
+		// Also check if current model has API key or is a keyless provider
 		if currentModelConfig, exists := m.GetCurrentModelConfig(); exists {
-			if currentModelConfig.APIKey != "" {
+			if currentModelConfig.APIKey != "" || currentModelConfig.Provider == "github-copilot" {
 				return true
 			}
 		}

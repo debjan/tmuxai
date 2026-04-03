@@ -1,6 +1,9 @@
 # Set to true to log full AI messages sent and received. Dest: ~/.config/tmuxai/debug/
 debug: false
 
+# Skip all confirmation prompts (use with caution!)
+yolo: false
+
 # Maximum context size in tokens, reaching 80% triggers squashing
 max_context_size: 100000
 
@@ -9,6 +12,17 @@ max_capture_lines: 200
 
 # Wait interval when exec pane is considered busy (used in observe and watch modes)
 wait_interval: 5
+
+# tmux pane split behavior for creating exec pane
+# Raw args passed to: tmux split-window <args...> -t <target> -P -F "#{pane_id}"
+# Reserved flags -t, -P, and -F are managed internally and must not be included here.
+# Default matches legacy behavior: detached horizontal split
+# Examples:
+#   ["-d", "-h"]                # horizontal split
+#   ["-d", "-v"]                # vertical split
+#   ["-d", "-v", "-p", "70"]  # vertical, 70%
+tmux:
+  exec_split_args: ["-d", "-h"]
 
 # If empty uses the first model alphabetically
 default_model: "fast"
@@ -51,6 +65,21 @@ models:
     api_base: "https://your-resource.openai.azure.com/"
     api_version: "2025-04-01-preview"
     deployment_name: "gpt-4o"
+
+  # Gemini API (direct access using Google's go-genai SDK)
+  gemini-flash:
+    provider: "gemini"
+    model: "gemini-2.5-flash"
+    api_key: "${GOOGLE_API_KEY}"
+
+  # GitHub Copilot (uses the official copilot-sdk/go — requires the `copilot` CLI in PATH)
+  # Install CLI: https://docs.github.com/en/copilot/github-copilot-in-the-cli
+  # Get token:   gh auth token
+  # api_key is optional if the CLI is already authenticated via `gh auth login`
+  copilot:
+    provider: "github-copilot"
+    model: "gpt-4o"
+    api_key: "${GITHUB_TOKEN}"
 
 # Confirm before AI executes a command
 exec_confirm: true

@@ -25,11 +25,13 @@ func TestProcessSubCommand_PrepareSubshell(t *testing.T) {
 	originalTmuxSend := system.TmuxSendCommandToPane
 	originalTmuxCapture := system.TmuxCapturePane
 	originalTmuxCurrentPaneId := system.TmuxCurrentPaneId
+	originalTmuxCurrentWindowTarget := system.TmuxCurrentWindowTarget
 	originalTmuxPanesDetails := system.TmuxPanesDetails
 	defer func() {
 		system.TmuxSendCommandToPane = originalTmuxSend
 		system.TmuxCapturePane = originalTmuxCapture
 		system.TmuxCurrentPaneId = originalTmuxCurrentPaneId
+		system.TmuxCurrentWindowTarget = originalTmuxCurrentWindowTarget
 		system.TmuxPanesDetails = originalTmuxPanesDetails
 	}()
 
@@ -47,6 +49,9 @@ func TestProcessSubCommand_PrepareSubshell(t *testing.T) {
 	system.TmuxCurrentPaneId = func() (string, error) {
 		return "main-pane", nil
 	}
+	system.TmuxCurrentWindowTarget = func() (string, error) {
+		return "@1:1", nil
+	}
 	system.TmuxPanesDetails = func(windowTarget string) ([]system.TmuxPaneDetails, error) {
 		// Return the test pane as the only available pane
 		return []system.TmuxPaneDetails{*manager.ExecPane}, nil
@@ -56,7 +61,8 @@ func TestProcessSubCommand_PrepareSubshell(t *testing.T) {
 	commandsSent = []string{} // Reset
 	manager.ProcessSubCommand("/prepare bash")
 
-	assert.Len(t, commandsSent, 2, "Should send PS1 command and clear command for bash")
+	assert.Len(t, commandsSent, 2, "Should send 2 commands for bash")
+	assert.Contains(t, commandsSent[0], "unset PROMPT_COMMAND", "Should unset PROMPT_COMMAND for bash")
 	assert.Contains(t, commandsSent[0], "PS1=", "Should send bash PS1 command")
 	assert.Equal(t, "C-l", commandsSent[1], "Should send clear screen command")
 
@@ -92,7 +98,7 @@ func TestProcessSubCommand_PrepareNormalShell(t *testing.T) {
 		Messages:         []ChatMessage{},
 		ExecPane: &system.TmuxPaneDetails{
 			Id:             "test-pane",
-			IsSubShell:     false,    // This is NOT a subshell
+			IsSubShell:     false,     // This is NOT a subshell
 			CurrentCommand: "unknown", // Unsupported shell - should not send commands
 		},
 	}
@@ -101,11 +107,13 @@ func TestProcessSubCommand_PrepareNormalShell(t *testing.T) {
 	originalTmuxSend := system.TmuxSendCommandToPane
 	originalTmuxCapture := system.TmuxCapturePane
 	originalTmuxCurrentPaneId := system.TmuxCurrentPaneId
+	originalTmuxCurrentWindowTarget := system.TmuxCurrentWindowTarget
 	originalTmuxPanesDetails := system.TmuxPanesDetails
 	defer func() {
 		system.TmuxSendCommandToPane = originalTmuxSend
 		system.TmuxCapturePane = originalTmuxCapture
 		system.TmuxCurrentPaneId = originalTmuxCurrentPaneId
+		system.TmuxCurrentWindowTarget = originalTmuxCurrentWindowTarget
 		system.TmuxPanesDetails = originalTmuxPanesDetails
 	}()
 
@@ -122,6 +130,9 @@ func TestProcessSubCommand_PrepareNormalShell(t *testing.T) {
 	// Mock the system functions used by GetTmuxPanes to return the test pane
 	system.TmuxCurrentPaneId = func() (string, error) {
 		return "main-pane", nil
+	}
+	system.TmuxCurrentWindowTarget = func() (string, error) {
+		return "@1:1", nil
 	}
 	system.TmuxPanesDetails = func(windowTarget string) ([]system.TmuxPaneDetails, error) {
 		// Return the test pane as the only available pane

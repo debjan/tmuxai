@@ -12,22 +12,24 @@ import (
 
 // Config holds the application configuration
 type Config struct {
-	Debug                 bool                  `mapstructure:"debug"`
-	MaxCaptureLines       int                   `mapstructure:"max_capture_lines"`
-	MaxContextSize        int                   `mapstructure:"max_context_size"`
-	WaitInterval          int                   `mapstructure:"wait_interval"`
-	SendKeysConfirm       bool                  `mapstructure:"send_keys_confirm"`
-	PasteMultilineConfirm bool                  `mapstructure:"paste_multiline_confirm"`
-	ExecConfirm           bool                  `mapstructure:"exec_confirm"`
-	WhitelistPatterns     []string              `mapstructure:"whitelist_patterns"`
-	BlacklistPatterns     []string              `mapstructure:"blacklist_patterns"`
-	OpenRouter            OpenRouterConfig      `mapstructure:"openrouter"`
-	OpenAI                OpenAIConfig          `mapstructure:"openai"`
-	AzureOpenAI           AzureOpenAIConfig     `mapstructure:"azure_openai"`
+	Debug                 bool                   `mapstructure:"debug"`
+	Yolo                  bool                   `mapstructure:"yolo"`
+	MaxCaptureLines       int                    `mapstructure:"max_capture_lines"`
+	MaxContextSize        int                    `mapstructure:"max_context_size"`
+	WaitInterval          int                    `mapstructure:"wait_interval"`
+	SendKeysConfirm       bool                   `mapstructure:"send_keys_confirm"`
+	PasteMultilineConfirm bool                   `mapstructure:"paste_multiline_confirm"`
+	ExecConfirm           bool                   `mapstructure:"exec_confirm"`
+	WhitelistPatterns     []string               `mapstructure:"whitelist_patterns"`
+	BlacklistPatterns     []string               `mapstructure:"blacklist_patterns"`
+	Tmux                  TmuxConfig             `mapstructure:"tmux"`
+	OpenRouter            OpenRouterConfig       `mapstructure:"openrouter"`
+	OpenAI                OpenAIConfig           `mapstructure:"openai"`
+	AzureOpenAI           AzureOpenAIConfig      `mapstructure:"azure_openai"`
 	DefaultModel          string                 `mapstructure:"default_model"`
-	Models                map[string]ModelConfig  `mapstructure:"models"`
-	Prompts               PromptsConfig         `mapstructure:"prompts"`
-	KnowledgeBase         KnowledgeBaseConfig   `mapstructure:"knowledge_base"`
+	Models                map[string]ModelConfig `mapstructure:"models"`
+	Prompts               PromptsConfig          `mapstructure:"prompts"`
+	KnowledgeBase         KnowledgeBaseConfig    `mapstructure:"knowledge_base"`
 }
 
 // OpenRouterConfig holds OpenRouter API configuration
@@ -52,13 +54,12 @@ type AzureOpenAIConfig struct {
 	DeploymentName string `mapstructure:"deployment_name"`
 }
 
-
 // ModelConfig holds a single model configuration
 type ModelConfig struct {
 	Provider string `mapstructure:"provider"`
-	Model   string `mapstructure:"model"`
-	APIKey  string `mapstructure:"api_key"`
-	BaseURL string `mapstructure:"base_url"`
+	Model    string `mapstructure:"model"`
+	APIKey   string `mapstructure:"api_key"`
+	BaseURL  string `mapstructure:"base_url"`
 
 	// Azure-specific fields
 	APIBase        string `mapstructure:"api_base"`
@@ -80,10 +81,17 @@ type KnowledgeBaseConfig struct {
 	Path     string   `mapstructure:"path"`
 }
 
+// TmuxConfig holds tmux-specific behavior settings.
+// ExecSplitArgs are raw args passed to `tmux split-window` before target/format flags.
+type TmuxConfig struct {
+	ExecSplitArgs []string `mapstructure:"exec_split_args"`
+}
+
 // DefaultConfig returns a configuration with default values
 func DefaultConfig() *Config {
 	return &Config{
 		Debug:                 false,
+		Yolo:                  false,
 		MaxCaptureLines:       200,
 		MaxContextSize:        100000,
 		WaitInterval:          5,
@@ -92,6 +100,9 @@ func DefaultConfig() *Config {
 		ExecConfirm:           true,
 		WhitelistPatterns:     []string{},
 		BlacklistPatterns:     []string{},
+		Tmux: TmuxConfig{
+			ExecSplitArgs: []string{"-d", "-h"},
+		},
 		OpenRouter: OpenRouterConfig{
 			BaseURL: "https://openrouter.ai/api/v1",
 			Model:   "google/gemini-2.5-flash-preview",
@@ -99,9 +110,9 @@ func DefaultConfig() *Config {
 		OpenAI: OpenAIConfig{
 			BaseURL: "https://api.openai.com/v1",
 		},
-		AzureOpenAI: AzureOpenAIConfig{},
+		AzureOpenAI:  AzureOpenAIConfig{},
 		DefaultModel: "",
-	Models:       make(map[string]ModelConfig),
+		Models:       make(map[string]ModelConfig),
 		Prompts: PromptsConfig{
 			BaseSystem:    ``,
 			ChatAssistant: ``,
@@ -304,5 +315,41 @@ func resolveEnvKeyReferenceInValue(val reflect.Value) {
 		if !val.IsNil() {
 			resolveEnvKeyReferenceInValue(val.Elem())
 		}
+	case reflect.Map:
+		if val.IsNil() {
+			return
+		}
+		for _, key := range val.MapKeys() {
+			mapVal := val.MapIndex(key)
+			if mapVal.Kind() == reflect.Ptr && mapVal.IsNil() {
+				continue
+			}
+			resolved := resolveEnvValueDeepCopy(mapVal)
+			val.SetMapIndex(key, resolved)
+		}
+	}
+}
+
+// resolveEnvValueDeepCopy returns a new value with env vars expanded.
+// For non-addressable map values, we need to create a new copy.
+func resolveEnvValueDeepCopy(val reflect.Value) reflect.Value {
+	switch val.Kind() {
+	case reflect.String:
+		return reflect.ValueOf(os.ExpandEnv(val.String()))
+	case reflect.Struct:
+		cp := reflect.New(val.Type()).Elem()
+		cp.Set(val)
+		resolveEnvKeyReferenceInValue(cp)
+		return cp
+	case reflect.Ptr:
+		if val.IsNil() {
+			return val
+		}
+		elem := resolveEnvValueDeepCopy(val.Elem())
+		ptr := reflect.New(elem.Type())
+		ptr.Elem().Set(elem)
+		return ptr
+	default:
+		return val
 	}
 }

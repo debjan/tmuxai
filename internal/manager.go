@@ -23,6 +23,11 @@ type AIResponse struct {
 	NoComment              bool
 }
 
+type ManagerOptions struct {
+	ForcedExecPaneID  string
+	ForcedReadPaneIDs []string
+}
+
 // Parsed only when pane is prepared
 type CommandExecHistory struct {
 	Command string
@@ -32,17 +37,19 @@ type CommandExecHistory struct {
 
 // Manager represents the TmuxAI manager agent
 type Manager struct {
-	Config           *config.Config
-	AiClient         *AiClient
-	Status           string // running, waiting, done
-	PaneId           string
-	ExecPane         *system.TmuxPaneDetails
-	Messages         []ChatMessage
-	ExecHistory      []CommandExecHistory
-	WatchMode        bool
-	OS               string
-	SessionOverrides map[string]interface{} // session-only config overrides
-	LoadedKBs        map[string]string      // Loaded knowledge bases (name -> content)
+	Config            *config.Config
+	AiClient          *AiClient
+	Status            string // running, waiting, done
+	PaneId            string
+	ExecPane          *system.TmuxPaneDetails
+	Messages          []ChatMessage
+	ExecHistory       []CommandExecHistory
+	WatchMode         bool
+	OS                string
+	SessionOverrides  map[string]interface{} // session-only config overrides
+	LoadedKBs         map[string]string      // Loaded knowledge bases (name -> content)
+	ForcedExecPaneID  string
+	ForcedReadPaneIDs map[string]bool
 
 	// Functions for mocking
 	confirmedToExec   func(command string, prompt string, edit bool) (bool, string)
@@ -50,7 +57,7 @@ type Manager struct {
 }
 
 // NewManager creates a new manager agent
-func NewManager(cfg *config.Config) (*Manager, error) {
+func NewManager(cfg *config.Config, options ManagerOptions) (*Manager, error) {
 
 	paneId, err := system.TmuxCurrentPaneId()
 	if err != nil {
@@ -76,14 +83,20 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 	os := system.GetOSDetails()
 
 	manager := &Manager{
-		Config:           cfg,
-		AiClient:         aiClient,
-		PaneId:           paneId,
-		Messages:         []ChatMessage{},
-		ExecPane:         &system.TmuxPaneDetails{},
-		OS:               os,
-		SessionOverrides: make(map[string]interface{}),
-		LoadedKBs:        make(map[string]string),
+		Config:            cfg,
+		AiClient:          aiClient,
+		PaneId:            paneId,
+		Messages:          []ChatMessage{},
+		ExecPane:          &system.TmuxPaneDetails{},
+		OS:                os,
+		SessionOverrides:  make(map[string]interface{}),
+		LoadedKBs:         make(map[string]string),
+		ForcedExecPaneID:  options.ForcedExecPaneID,
+		ForcedReadPaneIDs: make(map[string]bool),
+	}
+
+	for _, paneID := range options.ForcedReadPaneIDs {
+		manager.ForcedReadPaneIDs[paneID] = true
 	}
 
 	// Set the config manager in the AI client
@@ -92,7 +105,9 @@ func NewManager(cfg *config.Config) (*Manager, error) {
 	manager.confirmedToExec = manager.confirmedToExecFn
 	manager.getTmuxPanesInXml = manager.getTmuxPanesInXmlFn
 
-	manager.InitExecPane()
+	if err := manager.InitExecPane(); err != nil {
+		return nil, err
+	}
 
 	// Auto-load knowledge bases from config
 	manager.autoLoadKBs()
@@ -124,31 +139,48 @@ func (m *Manager) GetConfig() *config.Config {
 
 // getPrompt returns the prompt string with color
 func (m *Manager) GetPrompt() string {
-	tmuxaiColor := color.New(color.BgGreen, color.FgBlack)
-	stateColor := color.New(color.BgHiGreen, color.FgBlack)
-	arrowColor := color.New(color.FgHiGreen)
+	tmuxaiColor := color.New(color.FgGreen, color.Bold)
+	arrowColor := color.New(color.FgYellow, color.Bold)
+	stateColor := color.New(color.FgMagenta, color.Bold)
+	modelColor := color.New(color.FgCyan, color.Bold)
 
 	var stateSymbol string
 	switch m.Status {
 	case "running":
-		stateSymbol = ""
+		stateSymbol = "▶"
 	case "waiting":
-		stateSymbol = ""
+		stateSymbol = "?"
 	case "done":
-		stateSymbol = ""
+		stateSymbol = "✓"
 	default:
-		stateSymbol = ""
+		stateSymbol = ""
 	}
 	if m.WatchMode {
-		stateSymbol = ""
+		stateSymbol = "∞"
 	}
 
-	prompt := tmuxaiColor.Sprint("")
+	prompt := tmuxaiColor.Sprint("TmuxAI")
+
+	// Show current model if it's not the default or first available model
+	currentModel := m.GetModelsDefault()
+	availableModels := m.GetAvailableModels()
+	if len(availableModels) > 0 {
+		// Get the "expected" model (configured default or first available)
+		expectedModel := m.Config.DefaultModel
+		if expectedModel == "" && len(availableModels) > 0 {
+			expectedModel = availableModels[0] // First model as default
+		}
+
+		// Show model if current is different from expected
+		if currentModel != "" && currentModel != expectedModel {
+			prompt += " " + modelColor.Sprint("["+currentModel+"]")
+		}
+	}
 
 	if stateSymbol != "" {
-		prompt += stateColor.Sprint(" " + stateSymbol)
+		prompt += " " + stateColor.Sprint("["+stateSymbol+"]")
 	}
-	prompt += arrowColor.Sprint("") + " "
+	prompt += arrowColor.Sprint(" » ")
 	return prompt
 }
 

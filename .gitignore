@@ -1,4 +1,6 @@
 tmuxai
 debug
 .windsurfrules
-*.sublime-*
+CODEREF.md
+Makefile
+repomix-output.xml

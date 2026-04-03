@@ -27,6 +27,19 @@ func (m *Manager) GetTmuxPanes() ([]system.TmuxPaneDetails, error) {
 	return currentPanes, nil
 }
 
+func (m *Manager) shouldIncludeReadPane(pane system.TmuxPaneDetails) bool {
+	if pane.IsTmuxAiPane {
+		return false
+	}
+	if len(m.ForcedReadPaneIDs) == 0 {
+		return true
+	}
+	if pane.IsTmuxAiExecPane {
+		return true
+	}
+	return m.ForcedReadPaneIDs[pane.Id]
+}
+
 func (m *Manager) getTmuxPanesInXmlFn(config *config.Config) string {
 	currentTmuxWindow := strings.Builder{}
 	currentTmuxWindow.WriteString("<current_tmux_window_state>\n")
@@ -35,7 +48,7 @@ func (m *Manager) getTmuxPanesInXmlFn(config *config.Config) string {
 	// Filter out tmuxai_pane
 	var filteredPanes []system.TmuxPaneDetails
 	for _, p := range panes {
-		if !p.IsTmuxAiPane {
+		if m.shouldIncludeReadPane(p) {
 			filteredPanes = append(filteredPanes, p)
 		}
 	}
@@ -54,21 +67,21 @@ func (m *Manager) getTmuxPanesInXmlFn(config *config.Config) string {
 			title = "read_only_pane"
 		}
 
-		currentTmuxWindow.WriteString(fmt.Sprintf("<%s>\n", title))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - Id: %s\n", pane.Id))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - CurrentPid: %d\n", pane.CurrentPid))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - CurrentCommand: %s\n", pane.CurrentCommand))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - CurrentCommandArgs: %s\n", pane.CurrentCommandArgs))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - Shell: %s\n", pane.Shell))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - OS: %s\n", pane.OS))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - LastLine: %s\n", pane.LastLine))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - IsActive: %d\n", pane.IsActive))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - IsTmuxAiPane: %t\n", pane.IsTmuxAiPane))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - IsTmuxAiExecPane: %t\n", pane.IsTmuxAiExecPane))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - IsPrepared: %t\n", pane.IsPrepared))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - IsSubShell: %t\n", pane.IsSubShell))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - HistorySize: %d\n", pane.HistorySize))
-		currentTmuxWindow.WriteString(fmt.Sprintf(" - HistoryLimit: %d\n", pane.HistoryLimit))
+		fmt.Fprintf(&currentTmuxWindow, "<%s>\n", title)
+		fmt.Fprintf(&currentTmuxWindow, " - Id: %s\n", pane.Id)
+		fmt.Fprintf(&currentTmuxWindow, " - CurrentPid: %d\n", pane.CurrentPid)
+		fmt.Fprintf(&currentTmuxWindow, " - CurrentCommand: %s\n", pane.CurrentCommand)
+		fmt.Fprintf(&currentTmuxWindow, " - CurrentCommandArgs: %s\n", pane.CurrentCommandArgs)
+		fmt.Fprintf(&currentTmuxWindow, " - Shell: %s\n", pane.Shell)
+		fmt.Fprintf(&currentTmuxWindow, " - OS: %s\n", pane.OS)
+		fmt.Fprintf(&currentTmuxWindow, " - LastLine: %s\n", pane.LastLine)
+		fmt.Fprintf(&currentTmuxWindow, " - IsActive: %d\n", pane.IsActive)
+		fmt.Fprintf(&currentTmuxWindow, " - IsTmuxAiPane: %t\n", pane.IsTmuxAiPane)
+		fmt.Fprintf(&currentTmuxWindow, " - IsTmuxAiExecPane: %t\n", pane.IsTmuxAiExecPane)
+		fmt.Fprintf(&currentTmuxWindow, " - IsPrepared: %t\n", pane.IsPrepared)
+		fmt.Fprintf(&currentTmuxWindow, " - IsSubShell: %t\n", pane.IsSubShell)
+		fmt.Fprintf(&currentTmuxWindow, " - HistorySize: %d\n", pane.HistorySize)
+		fmt.Fprintf(&currentTmuxWindow, " - HistoryLimit: %d\n", pane.HistoryLimit)
 
 		if !pane.IsTmuxAiPane && pane.Content != "" {
 			currentTmuxWindow.WriteString("<pane_content>\n")
@@ -76,7 +89,7 @@ func (m *Manager) getTmuxPanesInXmlFn(config *config.Config) string {
 			currentTmuxWindow.WriteString("\n</pane_content>\n")
 		}
 
-		currentTmuxWindow.WriteString(fmt.Sprintf("</%s>\n\n", title))
+		fmt.Fprintf(&currentTmuxWindow, "</%s>\n\n", title)
 	}
 
 	currentTmuxWindow.WriteString("</current_tmux_window_state>\n")

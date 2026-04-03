@@ -12,6 +12,15 @@
     <a href="https://github.com/alvinunreal/tmuxai/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/alvinunreal/tmuxai?style=flat-square"></a>
     <a href="https://github.com/alvinunreal/tmuxai/issues"><img alt="Issues" src="https://img.shields.io/github/issues/alvinunreal/tmuxai?style=flat-square"></a>
     <br/>
+    <a href="https://moltfounders.com/jobs/249106d7-782a-4b35-8420-c86c1646e569"><img src="https://moltfounders.com/badges/4.png" alt="MoltFounders" height="25"></a>
+    <br/>
+    <sub>by <b>Boring Dystopia Development</b></sub>
+    <br/>
+    <br/>
+    <a href="https://boringdystopia.ai/"><img src="https://img.shields.io/badge/boringdystopia.ai-111111?style=for-the-badge&logo=vercel&logoColor=white" alt="boringdystopia.ai"></a>&nbsp;
+    <a href="https://x.com/alvinunreal"><img src="https://img.shields.io/badge/X-@alvinunreal-000000?style=for-the-badge&logo=x&logoColor=white" alt="X @alvinunreal"></a>&nbsp;
+    <a href="https://t.me/boringdystopiadevelopment"><img src="https://img.shields.io/badge/Telegram-Join%20channel-2CA5E0?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram Join channel"></a>
+    <br/>
     <br/>
     <br/>
     <a href="https://tmuxai.dev/screenshots" target="_blank">Screenshots</a> |
@@ -31,7 +40,6 @@
   - [Human-Inspired Interface](#human-inspired-interface)
 - [Installation](#installation)
   - [Quick Install](#quick-install)
-  - [Homebrew](#homebrew)
   - [Manual Download](#manual-download)
   - [Install from Main](#install-from-main)
 - [Post-Installation Setup](#post-installation-setup)
@@ -51,6 +59,7 @@
 - [Squashing](#squashing)
   - [What is Squashing?](#what-is-squashing)
   - [Manual Squashing](#manual-squashing)
+- [Multiline Input](#multiline-input)
 - [Core Commands](#core-commands)
 - [Command-Line Usage](#command-line-usage)
 - [Configuration](#configuration)
@@ -153,7 +162,7 @@ TmuxAI running per window and organizes your workspace using the following pane 
 
 1. **Chat Pane**: This is where you interact with the AI. It features a REPL-like interface with syntax highlighting, auto-completion, and readline shortcuts.
 
-2. **Exec Pane**: TmuxAI selects (or creates) a pane where commands can be executed.
+2. **Exec Pane**: TmuxAI selects (or creates) a pane where commands can be executed. You can also force a specific exec pane with `--exec-pane`.
 
 3. **Read-Only Panes**: All other panes in the current window serve as additional context. TmuxAI can read their content but does not interact with them.
 
@@ -310,6 +319,24 @@ If you'd like to manage your context before reaching the automatic threshold, yo
 TmuxAI ❯ /squash
 ```
 
+## Multiline Input
+
+For longer or more complex prompts, you can open your current input in an external text editor. This is similar to how bash allows editing commands with `Ctrl+X Ctrl+E`.
+
+**Keyboard Shortcuts:**
+- `Ctrl+O` - Open current prompt in external editor (works on all platforms)
+- `Alt+E` - Alternative binding (may not work on macOS due to Option key behavior)
+
+When triggered, TmuxAI will:
+1. Open your `$EDITOR` (falls back to `vim` if not set) with the current prompt content
+2. Wait for you to edit, save, and close the editor
+3. Replace the prompt with the edited content
+
+This is useful for:
+- Writing multi-line prompts or detailed instructions
+- Editing long commands more comfortably
+- Pasting and formatting complex content
+
 ## Knowledge Base
 
 The Knowledge Base feature allows you to create pre-defined context files in markdown format that can be loaded into TmuxAI's conversation context. This is useful for sharing common patterns, workflows, or project-specific information with the AI across sessions.
@@ -432,11 +459,11 @@ models:
     api_key: "your-anthropic-api-key"
     base_url: "https://api.anthropic.com"
 
+  # GitHub Copilot — requires the `copilot` CLI in PATH and `gh auth login`
+  # No api_key needed; the CLI uses your existing gh auth credentials
   github-copilot:
-    provider: "openrouter"
+    provider: "github-copilot"
     model: "claude-sonnet-4.5"
-    api_key: "your-github-copilot-api-key"
-    base_url: "https://api.githubcopilot.com"
 
   local-llama:
     provider: "openrouter"
@@ -457,12 +484,36 @@ models:
     api_base: "https://your-resource.openai.azure.com/"
     api_version: "2025-04-01-preview"
     deployment_name: "gpt-4o"
+
+  # Gemini API (direct access)
+  gemini-flash:
+    provider: "gemini"
+    model: "gemini-2.5-flash"
+    api_key: "${GOOGLE_API_KEY}"
 ```
 
 **Supported Providers:**
 - `openai` - OpenAI Responses API (GPT-4, GPT-5, etc.)
 - `openrouter` - Universal Chat Completion API, defaults to openrouter base url
 - `azure` - Azure Chat Completions API
+- `gemini` - Google Gemini API (direct access via go-genai SDK)
+- `github-copilot` - GitHub Copilot (via official copilot-sdk/go — see setup below)
+
+### GitHub Copilot Setup
+
+TmuxAI integrates with GitHub Copilot via the [official Go SDK](https://github.com/github/copilot-sdk), which communicates with the `copilot` CLI. No `api_key` is required — authentication uses your existing `gh` credentials.
+
+Follow the [GitHub Copilot CLI installation guide](https://docs.github.com/en/copilot/how-tos/copilot-cli/set-up-copilot-cli/install-copilot-cli) to install and authenticate the CLI, then configure TmuxAI:
+
+```yaml
+models:
+  fast:
+    provider: "github-copilot"
+    model: "claude-haiku-4.5"
+  smart:
+    provider: "github-copilot"
+    model: "claude-sonnet-4.5"
+```
 
 **Interactive Commands:**
 ```bash
@@ -539,10 +590,36 @@ You can start `tmuxai` with an initial message, task file, model configuration, 
   tmuxai --kb docker-workflows,git-conventions
   ```
 
+- **Choose Tmux Panes Explicitly:**
+  ```sh
+  # Force a specific exec pane by tmux pane ID
+  tmuxai --exec-pane %3
+
+  # Restrict read context to specific panes
+  tmuxai --read-panes %1,%2
+
+  # Fully control both execution and read context
+  tmuxai --exec-pane %3 --read-panes %1,%2
+  ```
+
+  Notes:
+  - `--exec-pane` forces TmuxAI to use that pane for command execution and disables auto-picking or auto-creating an exec pane.
+  - `--read-panes` limits read context to the listed pane IDs in the current tmux window.
+  - The TmuxAI chat pane cannot be used as an exec pane or read pane.
+  - Pane IDs must exist in the current tmux window.
+
 - **Combine Options:**
   ```sh
-  tmuxai --model gpt4 --kb docker-workflows "Debug this Docker issue"
+  tmuxai --model gpt4 --kb docker-workflows --exec-pane %3 --read-panes %1,%2 "Debug this Docker issue"
   ```
+
+- **Yolo Mode (Skip Confirmations):**
+  ```sh
+  # Skip all confirmation prompts - commands execute immediately
+  tmuxai --yolo "Install and configure nginx"
+  ```
+  
+  > **Warning**: Use `--yolo` with caution. This mode skips all safety confirmations and executes commands directly. Only use when you trust the AI's command suggestions completely.
 
 ## Configuration
 
@@ -550,6 +627,25 @@ The configuration can be managed through a YAML file, environment variables, or 
 
 TmuxAI looks for its configuration file at `~/.config/tmuxai/config.yaml`.
 For a sample configuration file, see [config.example.yaml](https://github.com/alvinunreal/tmuxai/blob/main/config.example.yaml).
+
+### tmux pane split configuration
+
+You can customize how TmuxAI creates its exec pane by setting raw `tmux split-window` arguments:
+
+```yaml
+tmux:
+  exec_split_args: ["-d", "-h"]
+```
+
+These args are injected as:
+
+```bash
+tmux split-window <exec_split_args...> -t <target> -P -F "#{pane_id}"
+```
+
+Reserved flags `-t`, `-P`, and `-F` are managed internally and must not be included in `exec_split_args`.
+
+If omitted, TmuxAI uses the legacy default: `-d -h`.
 
 ### Environment Variables
 
@@ -605,3 +701,10 @@ Don't forget to give the project a star!
 ## License
 
 Distributed under the Apache License. See [Apache License](https://github.com/alvinunreal/tmuxai/blob/main/LICENSE) for more information.
+
+---
+
+<!-- MoltFounders Banner -->
+<a href="https://moltfounders.com/jobs/249106d7-782a-4b35-8420-c86c1646e569">
+  <img src="img/moltfounders-banner.png" alt="MoltFounders - The Agent Co-Founder Network">
+</a>
