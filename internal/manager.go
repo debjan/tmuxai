@@ -159,7 +159,7 @@ func (m *Manager) GetPrompt() string {
 		stateSymbol = "∞"
 	}
 
-	prompt := tmuxaiColor.Sprint("TmuxAI")
+	prompt := tmuxaiColor.Sprint("✨")
 
 	// Show current model if it's not the default or first available model
 	currentModel := m.GetModelsDefault()
@@ -180,7 +180,7 @@ func (m *Manager) GetPrompt() string {
 	if stateSymbol != "" {
 		prompt += " " + stateColor.Sprint("["+stateSymbol+"]")
 	}
-	prompt += arrowColor.Sprint(" » ")
+	// prompt += arrowColor.Sprint(" » ")
 	return prompt
 }
 
