@@ -159,7 +159,7 @@ func (m *Manager) GetPrompt() string {
 		stateSymbol = "∞"
 	}
 
-	prompt := tmuxaiColor.Sprint("✨")
+	prompt := tmuxaiColor.Sprint("✨ ")
 
 	// Show current model if it's not the default or first available model
 	currentModel := m.GetModelsDefault()
