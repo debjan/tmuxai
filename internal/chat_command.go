@@ -408,7 +408,10 @@ Watch for: ` + watchDesc
 					return
 				}
 				for _, name := range names {
-					m.Skills.Unload(name)
+					if err := m.Skills.Unload(name); err != nil {
+						m.Println(fmt.Sprintf("Error: %v", err))
+						return
+					}
 					delete(m.LoadedSkills, name)
 				}
 				m.Skills.L1Block = m.Skills.BuildL1Block()

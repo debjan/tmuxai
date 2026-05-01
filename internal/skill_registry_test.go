@@ -430,12 +430,16 @@ func TestLoadMaxSkillCharsZeroMeansUnlimited(t *testing.T) {
 func TestLoadIdempotent(t *testing.T) {
 	tempDir := t.TempDir()
 	skillDir := filepath.Join(tempDir, "idem-skill")
-	os.MkdirAll(skillDir, 0755)
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	bodyContent := strings.Repeat("x", 500)
 	skillFile := filepath.Join(skillDir, "SKILL.md")
 	skillContent := "---\nname: idem-skill\ndescription: Idempotent load test\n---\n" + bodyContent
-	os.WriteFile(skillFile, []byte(skillContent), 0644)
+	if err := os.WriteFile(skillFile, []byte(skillContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	reg := &SkillRegistry{
 		Skills: map[string]*Skill{
@@ -477,12 +481,16 @@ func TestLoadIdempotent(t *testing.T) {
 func TestLoadPerSkillTruncation(t *testing.T) {
 	tempDir := t.TempDir()
 	skillDir := filepath.Join(tempDir, "huge-skill")
-	os.MkdirAll(skillDir, 0755)
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	hugeBody := strings.Repeat("z", 25000) // exceeds DefaultMaxSkillChars (20000)
 	skillFile := filepath.Join(skillDir, "SKILL.md")
 	skillContent := "---\nname: huge-skill\ndescription: Huge body\n---\n" + hugeBody
-	os.WriteFile(skillFile, []byte(skillContent), 0644)
+	if err := os.WriteFile(skillFile, []byte(skillContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	reg := &SkillRegistry{
 		Skills: map[string]*Skill{
@@ -521,11 +529,15 @@ func TestLoadPerSkillTruncation(t *testing.T) {
 func TestUnload(t *testing.T) {
 	tempDir := t.TempDir()
 	skillDir := filepath.Join(tempDir, "unload-me")
-	os.MkdirAll(skillDir, 0755)
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
 
 	skillFile := filepath.Join(skillDir, "SKILL.md")
 	skillContent := "---\nname: unload-me\ndescription: Unload test\n---\nBody text here\n"
-	os.WriteFile(skillFile, []byte(skillContent), 0644)
+	if err := os.WriteFile(skillFile, []byte(skillContent), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	reg := &SkillRegistry{
 		Skills: map[string]*Skill{
@@ -688,14 +700,26 @@ func TestBuildManifest(t *testing.T) {
 
 	// Skill dir with ancillary files
 	skillDir := filepath.Join(tempDir, "my-skill")
-	os.MkdirAll(skillDir, 0755)
-	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: my-skill\ndescription: test\n---\nBody\n"), 0644)
-	os.WriteFile(filepath.Join(skillDir, "helper.sh"), []byte("#!/bin/bash\necho hi"), 0644)
-	os.WriteFile(filepath.Join(skillDir, "README.md"), []byte("# Helper docs"), 0644)
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: my-skill\ndescription: test\n---\nBody\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "helper.sh"), []byte("#!/bin/bash\necho hi"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "README.md"), []byte("# Helper docs"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	subDir := filepath.Join(skillDir, "snippets")
-	os.MkdirAll(subDir, 0755)
-	os.WriteFile(filepath.Join(subDir, "snippet1.txt"), []byte("snippet content"), 0644)
+	if err := os.MkdirAll(subDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(subDir, "snippet1.txt"), []byte("snippet content"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	skill := &Skill{Name: "my-skill", DirPath: skillDir}
 
@@ -716,8 +740,12 @@ func TestBuildManifest(t *testing.T) {
 
 	// No ancillary files
 	emptyDir := filepath.Join(tempDir, "bare-skill")
-	os.MkdirAll(emptyDir, 0755)
-	os.WriteFile(filepath.Join(emptyDir, "SKILL.md"), []byte("---\nname: bare-skill\ndescription: bare\n---\nBody\n"), 0644)
+	if err := os.MkdirAll(emptyDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(emptyDir, "SKILL.md"), []byte("---\nname: bare-skill\ndescription: bare\n---\nBody\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 	bareSkill := &Skill{Name: "bare-skill", DirPath: emptyDir}
 	emptyManifest := bareSkill.BuildManifest()
 	if emptyManifest != "" {
@@ -732,13 +760,19 @@ func TestBuildManifest(t *testing.T) {
 func TestBuildManifestFileCap(t *testing.T) {
 	tempDir := t.TempDir()
 	skillDir := filepath.Join(tempDir, "many-files")
-	os.MkdirAll(skillDir, 0755)
-	os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: many-files\ndescription: many\n---\nBody\n"), 0644)
+	if err := os.MkdirAll(skillDir, 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(skillDir, "SKILL.md"), []byte("---\nname: many-files\ndescription: many\n---\nBody\n"), 0644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Create more files than maxManifestFiles (100)
 	for i := 0; i < 110; i++ {
 		fn := fmt.Sprintf("file_%04d.txt", i)
-		os.WriteFile(filepath.Join(skillDir, fn), []byte("content"), 0644)
+		if err := os.WriteFile(filepath.Join(skillDir, fn), []byte("content"), 0644); err != nil {
+			t.Fatal(err)
+		}
 	}
 
 	skill := &Skill{Name: "many-files", DirPath: skillDir}
@@ -755,43 +789,62 @@ func TestBuildManifestFileCap(t *testing.T) {
 func TestValidateDiscoverAndCapErrors(t *testing.T) {
 	tests := []struct {
 		name         string
-		setupFunc    func(baseTemp string)
+		setupFunc    func(t *testing.T, baseTemp string)
 		wantFound    map[string]bool
 		wantNotFound []string
 	}{
 		{
 			name: "discovers valid, skips corrupted",
-			setupFunc: func(base string) {
+			setupFunc: func(t *testing.T, base string) {
+				t.Helper()
 				configDir := filepath.Join(base, ".config", "tmuxai")
 				skillsDir := filepath.Join(configDir, "skills")
 
 				// Valid skill
 				validDir := filepath.Join(skillsDir, "valid-skill")
-				os.MkdirAll(validDir, 0755)
+				if err := os.MkdirAll(validDir, 0755); err != nil {
+					t.Fatal(err)
+				}
 				validContent := "---\nname: valid-skill\ndescription: A perfectly valid skill for testing\n---\nSome useful content here.\n"
-				os.WriteFile(filepath.Join(validDir, "SKILL.md"), []byte(validContent), 0644)
+				if err := os.WriteFile(filepath.Join(validDir, "SKILL.md"), []byte(validContent), 0644); err != nil {
+					t.Fatal(err)
+				}
 
 				// Corrupted skill: YAML error
 				corrDir := filepath.Join(skillsDir, "corrupt-yaml")
-				os.MkdirAll(corrDir, 0755)
+				if err := os.MkdirAll(corrDir, 0755); err != nil {
+					t.Fatal(err)
+				}
 				corrContent := "---\nname: corrupt-yaml\ndescription: [{bad yaml\n---\nBody\n"
-				os.WriteFile(filepath.Join(corrDir, "SKILL.md"), []byte(corrContent), 0644)
+				if err := os.WriteFile(filepath.Join(corrDir, "SKILL.md"), []byte(corrContent), 0644); err != nil {
+					t.Fatal(err)
+				}
 
 				// Invalid name skill: uppercase letters
 				badNameDir := filepath.Join(skillsDir, "Bad-Name")
-				os.MkdirAll(badNameDir, 0755)
+				if err := os.MkdirAll(badNameDir, 0755); err != nil {
+					t.Fatal(err)
+				}
 				badNameContent := "---\nname: Bad-Name\ndescription: Has uppercase name\n---\nBody\n"
-				os.WriteFile(filepath.Join(badNameDir, "SKILL.md"), []byte(badNameContent), 0644)
+				if err := os.WriteFile(filepath.Join(badNameDir, "SKILL.md"), []byte(badNameContent), 0644); err != nil {
+					t.Fatal(err)
+				}
 
 				// Missing name/description
 				noNameDir := filepath.Join(skillsDir, "no-name")
-				os.MkdirAll(noNameDir, 0755)
+				if err := os.MkdirAll(noNameDir, 0755); err != nil {
+					t.Fatal(err)
+				}
 				noNameContent := "---\ndescription: No name provided\n---\nBody\n"
-				os.WriteFile(filepath.Join(noNameDir, "SKILL.md"), []byte(noNameContent), 0644)
+				if err := os.WriteFile(filepath.Join(noNameDir, "SKILL.md"), []byte(noNameContent), 0644); err != nil {
+					t.Fatal(err)
+				}
 
 				// Empty directory (no SKILL.md)
 				emptyDir := filepath.Join(skillsDir, "empty-dir")
-				os.MkdirAll(emptyDir, 0755)
+				if err := os.MkdirAll(emptyDir, 0755); err != nil {
+					t.Fatal(err)
+				}
 			},
 			wantFound:    map[string]bool{"valid-skill": true},
 			wantNotFound: []string{"corrupt-yaml", "Bad-Name", "no-name", "empty-dir"},
@@ -801,11 +854,17 @@ func TestValidateDiscoverAndCapErrors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			baseTemp := t.TempDir()
-			tc.setupFunc(baseTemp)
+			tc.setupFunc(t, baseTemp)
 
 			origHome := os.Getenv("HOME")
-			os.Setenv("HOME", baseTemp)
-			t.Cleanup(func() { os.Setenv("HOME", origHome) })
+			if err := os.Setenv("HOME", baseTemp); err != nil {
+				t.Fatal(err)
+			}
+			t.Cleanup(func() {
+				if err := os.Setenv("HOME", origHome); err != nil {
+					t.Errorf("restore HOME: %v", err)
+				}
+			})
 
 			sc := &config.SkillsConfig{
 				AutoScan:           true,
@@ -887,8 +946,14 @@ func TestInitSkillsHonorsAutoScanFalse(t *testing.T) {
 	}
 
 	origHome := os.Getenv("HOME")
-	os.Setenv("HOME", baseTemp)
-	t.Cleanup(func() { os.Setenv("HOME", origHome) })
+	if err := os.Setenv("HOME", baseTemp); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.Setenv("HOME", origHome); err != nil {
+			t.Errorf("restore HOME: %v", err)
+		}
+	})
 
 	reg, err := InitSkills(&config.SkillsConfig{
 		AutoScan:       false,
