@@ -160,16 +160,16 @@ func (m *Manager) GetPrompt() string {
 	var stateSymbol string
 	switch m.Status {
 	case "running":
-		stateSymbol = "💫"
+		stateSymbol = "💫 "
 	case "waiting":
-		stateSymbol = "⏳"
+		stateSymbol = "⏳ "
 	case "done":
-		stateSymbol = "🎉"
+		stateSymbol = "🎉 "
 	default:
 		stateSymbol = ""
 	}
 	if m.WatchMode {
-		stateSymbol = "🕒"
+		stateSymbol = "🕒 "
 	}
 
 	prompt := tmuxaiColor.Sprint("✨ ")
@@ -191,7 +191,7 @@ func (m *Manager) GetPrompt() string {
 	}
 
 	if stateSymbol != "" {
-		prompt += " " + stateColor.Sprint("| "+stateSymbol)
+		prompt = stateColor.Sprint(stateSymbol)
 	}
 	// prompt += arrowColor.Sprint(" » ")
 	return prompt
