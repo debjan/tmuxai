@@ -12,7 +12,6 @@
     <a href="https://github.com/alvinunreal/tmuxai/releases/latest"><img alt="Release" src="https://img.shields.io/github/v/release/alvinunreal/tmuxai?style=flat-square"></a>
     <a href="https://github.com/alvinunreal/tmuxai/issues"><img alt="Issues" src="https://img.shields.io/github/issues/alvinunreal/tmuxai?style=flat-square"></a>
     <br/>
-    <a href="https://moltfounders.com/jobs/249106d7-782a-4b35-8420-c86c1646e569"><img src="https://moltfounders.com/badges/4.png" alt="MoltFounders" height="25"></a>
     <br/>
     <sub>by <b>Boring Dystopia Development</b></sub>
     <br/>
@@ -53,6 +52,12 @@
   - [Creating Knowledge Bases](#creating-knowledge-bases)
   - [Using Knowledge Bases](#using-knowledge-bases)
   - [Auto-Loading Knowledge Bases](#auto-loading-knowledge-bases)
+- [Skills](#skills)
+  - [Enabling Skills](#enabling-skills)
+  - [Creating Skills](#creating-skills)
+  - [Using Skills](#using-skills)
+  - [Auto-Match](#auto-match)
+  - [Budget Controls](#budget-controls)
 - [Model Configuration](#model-configuration)
   - [Setting Up Multiple Models](#setting-up-multiple-models)
   - [Switching Between Models](#switching-between-models)
@@ -428,6 +433,143 @@ knowledge_base:
 - Knowledge bases are injected after the system prompt but before conversation history
 - Unloading a KB removes it from future messages immediately
 
+## Skills
+
+The Skills feature extends the Knowledge Base system with structured, metadata-rich instructions that teach TmuxAI new capabilities. Unlike KBs (which provide passive reference material), skills can be auto-discovered, lazily loaded, and optionally auto-matched to incoming messages.
+
+Each skill lives in a directory with a `SKILL.md` file containing frontmatter metadata and body content. Ancillary files (scripts, templates, reference docs) can coexist in the same directory.
+
+### Enabling Skills
+
+Skills are **disabled by default**. Enable them in `~/.config/tmuxai/config.yaml`:
+```yaml
+knowledge_base:
+  skills:
+    enabled: true
+```
+
+### Creating Skills
+
+Skills are stored in `~/.config/tmuxai/skills/<skill-name>/`:
+
+```bash
+mkdir -p ~/.config/tmuxai/skills/git-hooks
+```
+
+Create `SKILL.md` with frontmatter:
+```bash
+cat > ~/.config/tmuxai/skills/git-hooks/SKILL.md << 'EOF'
+---
+name: git-hooks
+description: Git pre-commit and linting setup. Auto-stage hooks, conventional commits, branch protection.
+disable-model-invocation: false
+---
+
+# Git Hooks Guide
+
+## Pre-commit Setup
+
+```bash
+git config core.hooksPath .husky
+npm install husky --save-dev
+```
+
+...rest of the skill body...
+EOF
+```
+
+**Frontmatter fields:**
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `name` | Yes | Unique skill name (must match directory name, alphanumeric + hyphens only) |
+| `description` | Yes | Brief description shown in L1 discovery block and `/skill list` |
+| `disable-model-invocation` | No | If `true`, disables auto-match — skill must be loaded manually |
+
+Optional ancillary files (`.sh`, `.txt`, `.py`, `.json`) can be placed alongside `SKILL.md`. When a skill is loaded, TmuxAI includes a manifest listing those helper file paths so the model can request them if needed.
+
+### Using Skills
+
+```bash
+# List available skills
+TmuxAI » /skill
+Available skills:
+  [ ] docker-workflows
+  [ ] git-hooks                [manual]
+  [ ] terraform-best-practices
+
+# Load a skill (lazy-load body + ancillary file manifest)
+TmuxAI » /skill load git-hooks
+✓ Loaded skill: git-hooks (1,240 chars)
+
+# List again to see loaded status
+TmuxAI » /skill
+Available skills:
+  [✓] docker-workflows               (850 chars)
+  [✓] git-hooks                      (1,240 chars)
+  [ ] terraform-best-practices
+
+Loaded: 2/3 skill(s), 2,090/32,000 chars
+
+# View skill details without loading body
+TmuxAI » /skill info git-hooks
+Name:        git-hooks
+Description: Git pre-commit and linting setup.
+Disabled:    false
+Loaded:      true
+Body Size:   1,240 chars
+Directory:   ~/.config/tmuxai/skills/git-hooks
+File:        ~/.config/tmuxai/skills/git-hooks/SKILL.md
+
+# Validate all skills
+TmuxAI » /skill validate
+Validated 3 skill(s):
+  ✓ OK  docker-workflows
+  ✓ OK  git-hooks
+  ✓ OK  terraform-best-practices
+
+# Unload a skill
+TmuxAI » /skill unload git-hooks
+✓ Unloaded skill: git-hooks
+
+# Unload all skills
+TmuxAI » /skill unload --all
+✓ Unloaded all skills (2 skill(s))
+```
+
+### Auto-Match
+
+You can enable automatic skill matching against incoming messages:
+
+```yaml
+knowledge_base:
+  skills:
+    enabled: true
+    auto_match: true
+    auto_match_threshold: 0.1  # Match sensitivity (0.0–1.0, lower = more aggressive)
+```
+
+With auto-match enabled, TmuxAI analyzes incoming messages and loads relevant skills based on term frequency and description relevance. Skills marked `[manual]` (via `disable-model-invocation: true`) require explicit loading.
+
+### Budget Controls
+
+Skills share context budget with your conversation. Defaults:
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `max_l1_chars` | 8,000 | Maximum chars for the L1 discovery block |
+| `max_loaded_chars` | 32,000 | Maximum chars across all loaded skill bodies |
+| `max_skill_chars` | 20,000 | Maximum chars per individual skill body; set to `0` to disable the per-skill cap |
+
+Use `/info` to monitor context usage with skills loaded.
+
+**Important Notes:**
+- Skills are injected after the system prompt and KBs, before conversation history
+- The L1 discovery block tells the model which skills exist and their load status
+- Body content is only loaded on demand (lazy loading)
+- A 1MB cap per SKILL.md prevents runaway memory usage
+- SKILL.md frontmatter fences (`---`) are matched line-by-line; standalone `---` lines in multi-line YAML values will be misinterpreted as the closing fence
+
 ## Model Configuration
 
 TmuxAI supports configuring multiple AI model configurations and easily switching between them. This allows you to define different AI providers, models, and settings for various use cases.
@@ -498,6 +640,33 @@ models:
 - `azure` - Azure Chat Completions API
 - `gemini` - Google Gemini API (direct access via go-genai SDK)
 - `github-copilot` - GitHub Copilot (via official copilot-sdk/go — see setup below)
+- `bedrock` - AWS Bedrock (via the Converse API — supports Anthropic, Meta, Mistral, Amazon Nova/Titan, Cohere, AI21, etc.)
+
+### AWS Bedrock Setup
+
+TmuxAI talks to AWS Bedrock via the [Converse API](https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html), which provides a unified interface across all Bedrock-hosted model families. No `api_key` is required — credentials flow through the standard AWS credential chain (environment variables, `~/.aws/credentials`, IAM role, SSO, etc.).
+
+Before first use:
+
+1. Request access to the models you want in the [AWS Bedrock console](https://console.aws.amazon.com/bedrock/) (Model access → Enable models).
+2. Ensure your AWS credentials are configured (`aws configure`, `aws sso login`, an IAM role, or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` env vars).
+3. Add a model config:
+
+```yaml
+models:
+  claude-bedrock:
+    provider: "bedrock"
+    model: "anthropic.claude-3-5-sonnet-20241022-v2:0"
+    region: "us-east-1"      # optional if AWS_REGION is set
+    aws_profile: "default"   # optional — named profile from ~/.aws/credentials
+
+  nova-pro:
+    provider: "bedrock"
+    model: "amazon.nova-pro-v1:0"
+    region: "us-east-1"
+```
+
+The `model` field must be a Bedrock model ID (or inference-profile ARN). See the [Bedrock model IDs documentation](https://docs.aws.amazon.com/bedrock/latest/userguide/models-supported.html) for a full list.
 
 ### GitHub Copilot Setup
 

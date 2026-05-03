@@ -65,6 +65,21 @@ type ModelConfig struct {
 	APIBase        string `mapstructure:"api_base"`
 	APIVersion     string `mapstructure:"api_version"`
 	DeploymentName string `mapstructure:"deployment_name"`
+
+	// AWS Bedrock-specific fields
+	// Region is the AWS region (e.g. "us-east-1"). If empty, falls back to
+	// AWS_REGION / AWS_DEFAULT_REGION from the environment.
+	// AWSProfile optionally selects a named profile from ~/.aws/credentials.
+	// Credentials are otherwise resolved via the default AWS credential chain
+	// (environment variables, shared config, IAM roles, SSO, etc.).
+	Region     string `mapstructure:"region"`
+	AWSProfile string `mapstructure:"aws_profile"`
+
+	// Inference parameters (used by Bedrock today; other providers may adopt
+	// them later). Zero values mean "unset"; the provider layer supplies a
+	// safe default where one is required.
+	MaxTokens   int32   `mapstructure:"max_tokens"`
+	Temperature float32 `mapstructure:"temperature"`
 }
 
 // PromptsConfig holds customizable prompt templates
@@ -75,10 +90,23 @@ type PromptsConfig struct {
 	Watch                 string `mapstructure:"watch"`
 }
 
+// SkillsConfig holds skill system configuration
+type SkillsConfig struct {
+	Enabled            bool    `mapstructure:"enabled"`
+	AutoScan           bool    `mapstructure:"auto_scan"`
+	AutoMatch          bool    `mapstructure:"auto_match"`
+	AutoMatchThreshold float64 `mapstructure:"auto_match_threshold"`
+	MaxL1Chars         int     `mapstructure:"max_l1_chars"`
+	MaxLoadedChars     int     `mapstructure:"max_loaded_chars"`
+	MaxSkillChars      int     `mapstructure:"max_skill_chars"`
+	TruncateDescAt     int     `mapstructure:"truncate_desc_at"`
+}
+
 // KnowledgeBaseConfig holds knowledge base configuration
 type KnowledgeBaseConfig struct {
-	AutoLoad []string `mapstructure:"auto_load"`
-	Path     string   `mapstructure:"path"`
+	AutoLoad []string     `mapstructure:"auto_load"`
+	Path     string       `mapstructure:"path"`
+	Skills   SkillsConfig `mapstructure:"skills"`
 }
 
 // TmuxConfig holds tmux-specific behavior settings.
@@ -120,29 +148,48 @@ func DefaultConfig() *Config {
 		KnowledgeBase: KnowledgeBaseConfig{
 			AutoLoad: []string{},
 			Path:     "",
+			Skills: SkillsConfig{
+				Enabled:            false,
+				AutoScan:           true,
+				AutoMatch:          false,
+				AutoMatchThreshold: 0.1,
+				MaxL1Chars:         8000,
+				MaxLoadedChars:     32000,
+				MaxSkillChars:      20000,
+				TruncateDescAt:     200,
+			},
 		},
 	}
 }
 
-// Load loads the configuration from file or environment variables
-func Load() (*Config, error) {
+// Load loads the configuration from file or environment variables.
+// An optional configFilePath can be passed to load from a specific file.
+func Load(configFilePath ...string) (*Config, error) {
 	config := DefaultConfig()
 
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get user home directory: %w", err)
-	}
-
-	viper.AddConfigPath(".")
-
-	configDir, err := GetConfigDir()
-	if err == nil {
-		viper.AddConfigPath(configDir)
+	// If a custom config file path is provided, use it directly
+	if len(configFilePath) > 0 && configFilePath[0] != "" {
+		viper.SetConfigFile(configFilePath[0])
+	} else if envPath := os.Getenv("TMUXAI_CONFIG"); envPath != "" {
+		// Support TMUXAI_CONFIG env var as well
+		viper.SetConfigFile(envPath)
 	} else {
-		viper.AddConfigPath(filepath.Join(homeDir, ".config", "tmuxai"))
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get user home directory: %w", err)
+		}
+
+		viper.AddConfigPath(".")
+
+		configDir, err := GetConfigDir()
+		if err == nil {
+			viper.AddConfigPath(configDir)
+		} else {
+			viper.AddConfigPath(filepath.Join(homeDir, ".config", "tmuxai"))
+		}
 	}
 
 	// Environment variables
