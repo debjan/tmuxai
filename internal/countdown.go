@@ -77,18 +77,18 @@ func renderCountdown(remaining, total int, paused bool, highlightColor, dimColor
 	dots := make([]string, total)
 	for j := 0; j < total; j++ {
 		if j >= total-remaining {
-			dots[j] = dimColor("○")
+			dots[j] = dimColor("⚫")
 		} else {
-			dots[j] = highlightColor("●")
+			dots[j] = highlightColor("⚪")
 		}
 	}
 
 	// Use simple fixed-width characters for status indicators
 	var statusIndicator string
 	if paused {
-		statusIndicator = pauseColor("")
+		statusIndicator = pauseColor("🔴")
 	} else {
-		statusIndicator = highlightColor("")
+		statusIndicator = highlightColor("🟢")
 	}
 
 	// Ensure exact character count and consistent spacing with printf
