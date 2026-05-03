@@ -34,13 +34,13 @@ func (m *Manager) confirmedToExecFn(command string, prompt string, edit bool) (b
 	switch assessment.Level {
 	case RiskDanger:
 		riskColor = color.New(color.FgRed, color.Bold)
-		riskIcon = "!"
+		riskIcon = "❗ "
 	case RiskUnknown:
 		riskColor = color.New(color.FgYellow, color.Bold)
-		riskIcon = "?"
+		riskIcon = "❓ "
 	default: // RiskSafe
 		riskColor = color.New(color.FgGreen, color.Bold)
-		riskIcon = "✓"
+		riskIcon = "✔ "
 	}
 
 	var promptText string
