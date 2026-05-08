@@ -1,13 +1,16 @@
 package internal
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/alvinunreal/tmuxai/config"
+	"github.com/alvinunreal/tmuxai/internal/mcp"
 	"github.com/alvinunreal/tmuxai/logger"
 	"github.com/alvinunreal/tmuxai/system"
 )
@@ -31,6 +34,13 @@ const helpMessage = `Available commands:
 - /skill unload --all: Unload all skills
 - /skill info <name>: Show skill details
 - /skill validate: Re-scan and validate skills
+- /websearch [-f N] <query>: Search the web (use -f N to auto-fetch top N results)
+- /webfetch <url>: Fetch and extract content from a URL
+- /mcp: List MCP servers and status
+- /mcp tools [<server>]: List MCP tools
+- /mcp load: Full reload MCP config (shutdown all, reconnect all)
+- /mcp reload: Hot reload MCP config (incremental diff)
+- /mcp unload: Disconnect all MCP servers
 - /exit: Exit the application`
 
 var commands = []string{
@@ -46,6 +56,9 @@ var commands = []string{
 	"/model",
 	"/kb",
 	"/skill",
+	"/websearch",
+	"/webfetch",
+	"/mcp",
 }
 
 // checks if the given content is a command
@@ -157,8 +170,9 @@ func (m *Manager) ProcessSubCommand(command string) {
 		return
 
 	case prefixMatch(commandPrefix, "/exit"):
-		logger.Info("Exit command received, stopping watch mode (if active) and exiting.")
-		os.Exit(0)
+		// Handled by REPL loop in chat.go for graceful shutdown.
+		// This path is kept as a fallback; Cleanup() is deferred in cli.go.
+		logger.Info("Exit command received.")
 		return
 
 	case prefixMatch(commandPrefix, "/squash"):
@@ -495,7 +509,160 @@ Watch for: ` + watchDesc
 		}
 
 		m.Println("Usage: /skill [list|load <name>|unload <name>|unload --all|info <name>|validate]")
+
+	case prefixMatch(commandPrefix, "/websearch"):
+		if !m.Config.WebSearch.Enabled {
+			m.Println("Web search is not enabled. Configure web_search.enabled: true in your config.")
+			return
+		}
+		if m.SearchEngine == nil {
+			m.Println("Web search engine not initialized. Check your configuration.")
+			return
+		}
+		// Parse -f N flag
+		var fetchCount int
+		hasFetchFlag := false
+		for i, p := range parts[1:] {
+			if p == "-f" && i+1 < len(parts[1:]) {
+				n, err := strconv.Atoi(parts[1:][i+1])
+				if err != nil || n < 1 {
+					m.Println("Usage: /websearch [-f N] <query>")
+					return
+				}
+				fetchCount = n
+				hasFetchFlag = true
+				break
+			}
+		}
+		if !hasFetchFlag {
+			if len(parts) < 2 {
+				m.Println("Usage: /websearch [-f N] <query>")
+				return
+			}
+			query := strings.Join(parts[1:], " ")
+			m.handleWebSearch(query)
+			return
+		}
+		// Extract the actual query (everything except -f and its argument)
+		remainingQuery := make([]string, 0)
+		skipNext := false
+		for _, p := range parts[1:] {
+			if skipNext {
+				skipNext = false
+				continue
+			}
+			if p == "-f" {
+				skipNext = true
+				continue
+			}
+			remainingQuery = append(remainingQuery, p)
+		}
+		if len(remainingQuery) < 1 {
+			m.Println("Usage: /websearch [-f N] <query>")
+			return
+		}
+		// Perform search (budget still enforced by SearchEngine)
+		query := strings.Join(remainingQuery, " ")
+		ctx, cancel := context.WithTimeout(context.Background(), time.Duration(m.Config.WebSearch.TimeoutSeconds)*time.Second)
+		defer cancel()
+		searchResp := m.SearchEngine.Search(ctx, query)
+		if searchResp.Error != nil {
+			m.Println(fmt.Sprintf("Search failed: %v", searchResp.Error))
+			return
+		}
+		formatted := FormatSearchResultsBlock(query, searchResp.Provider, searchResp.Results)
+		fmt.Println(formatted)
+		m.Messages = append(m.Messages, ChatMessage{
+			Content:   formatted,
+			FromUser:  false,
+			Timestamp: time.Now(),
+		})
+		// Auto-fetch top N results
+		actualCount := fetchCount
+		if actualCount > len(searchResp.Results) {
+			actualCount = len(searchResp.Results)
+		}
+		if actualCount > 0 {
+			fmt.Printf("\nFetching top %d result(s)...\n", actualCount)
+			fetchMaxChars := m.Config.WebSearch.FetchMaxChars
+			if fetchMaxChars <= 0 {
+				fetchMaxChars = m.Config.WebFetch.MaxChars
+			}
+			for i := 0; i < actualCount; i++ {
+				urlStr := searchResp.Results[i].URL
+				// M3: Each fetch gets its own fresh context with full timeout budget.
+				fetchCtx, fetchCancel := context.WithTimeout(
+					context.Background(),
+					time.Duration(m.Config.WebFetch.TimeoutSeconds)*time.Second,
+				)
+				fetchResp := FetchWithFallbacks(fetchCtx, urlStr, fetchMaxChars, m.Config.WebFetch.TimeoutSeconds, false)
+				fetchCancel()
+				sourceLabel := ""
+				if fetchResp.Source == "wayback" {
+					sourceLabel = " via fallback: wayback"
+				}
+				chrs := utf8.RuneCountInString(fetchResp.Content)
+				// Skip appending garbage content to LLM context.
+				// Symmetric with direct fetch (/webfetch): Source == "" && chars < 150
+				if fetchResp.Source == "" && chrs < 150 {
+					fmt.Printf("...%s: all fetch methods returned minimal content, skipping\n", urlStr)
+					continue
+				}
+				fmt.Printf("...fetched: %s (%d chars)%s\n", urlStr, chrs, sourceLabel)
+				formatted := FormatFetchResultsBlock(urlStr, fetchResp.Content)
+				m.Messages = append(m.Messages, ChatMessage{
+					Content:   formatted,
+					FromUser:  false,
+					Timestamp: time.Now(),
+				})
+			}
+		}
 		return
+
+	case prefixMatch(commandPrefix, "/webfetch"):
+		if !m.Config.WebFetch.Enabled {
+			m.Println("Web fetch is not enabled. Configure web_fetch.enabled: true in your config.")
+			return
+		}
+		if len(parts) < 2 {
+			m.Println("Usage: /webfetch <url>")
+			return
+		}
+		urlStr := strings.Join(parts[1:], " ")
+		m.handleWebFetch(urlStr)
+		return
+
+	case prefixMatch(commandPrefix, "/mcp"):
+		// Allow /mcp load even when MCP is not yet configured
+		if m.McpManager == nil {
+			if len(parts) >= 2 && parts[1] == "load" {
+				m.reloadMcp()
+				return
+			}
+			m.Println("MCP not configured. Create ~/.config/tmuxai/mcp.json and use /mcp load.")
+			return
+		}
+		if len(parts) == 1 || (len(parts) == 2 && parts[1] == "list") {
+			m.showMcpServers()
+			return
+		} else if len(parts) >= 2 && parts[1] == "tools" {
+			serverFilter := ""
+			if len(parts) >= 3 {
+				serverFilter = parts[2]
+			}
+			m.showMcpTools(serverFilter)
+			return
+		} else if len(parts) >= 2 && parts[1] == "load" {
+			m.reloadMcp()
+			return
+		} else if len(parts) >= 2 && parts[1] == "reload" {
+			m.reloadMcpIncremental()
+			return
+		} else if len(parts) >= 2 && parts[1] == "unload" {
+			m.unloadMcp()
+			return
+		}
+		m.Println("Usage: /mcp [list|tools <server>|load|reload|unload]")
 
 	default:
 		m.Println(fmt.Sprintf("Unknown command: %s. Type '/help' to see available commands.", command))
@@ -575,6 +742,40 @@ func (m *Manager) formatInfo() {
 		formatLine("Loaded Skills", fmt.Sprintf("%d (%d chars)", len(m.LoadedSkills), m.Skills.UsedChars))
 	}
 
+	// Display MCP information
+	// MCP server status and tool count summary
+	if m.McpManager != nil {
+		servers := m.McpManager.GetServerInfo()
+		if len(servers) > 0 {
+			active := 0
+			unhealthy := 0
+			disabled := 0
+			totalTools := 0
+			for _, s := range servers {
+				switch s.Status {
+				case mcp.StatusHealthy:
+					active++
+					totalTools += len(s.Tools)
+				case mcp.StatusUnhealthy:
+					unhealthy++
+				}
+				if s.Config.Disabled {
+					disabled++
+				}
+			}
+			// Estimate tokens from the actual tool definitions text
+			mcpTokens := system.EstimateTokenCount(m.ensureMcpToolDefs())
+			fmt.Println(formatter.FormatSection("\nMCP"))
+			formatLine("Active", fmt.Sprintf("%d (total tools: %d, ~%d tokens)", active, totalTools, mcpTokens))
+			if unhealthy > 0 {
+				formatLine("Unhealthy", unhealthy)
+			}
+			if disabled > 0 {
+				formatLine("Disabled", disabled)
+			}
+		}
+	}
+
 	// Display tmux panes section
 	fmt.Println()
 	fmt.Println(formatter.FormatSection("Tmux Window Panes"))
@@ -652,4 +853,249 @@ func (m *Manager) switchModel(modelName string) {
 	modelConfig, _ := m.GetModelConfig(modelName)
 
 	m.Println(fmt.Sprintf("✓ Switched to %s (%s: %s)", modelName, modelConfig.Provider, modelConfig.Model))
+}
+
+// handleWebSearch performs a web search and injects results into context.
+func (m *Manager) handleWebSearch(query string) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(m.Config.WebSearch.TimeoutSeconds)*time.Second)
+	defer cancel()
+
+	fmt.Printf("Searching for \"%s\"...\n", query)
+
+	resp := m.SearchEngine.Search(ctx, query)
+	if resp.Error != nil {
+		m.Println(fmt.Sprintf("Search failed: %v", resp.Error))
+		return
+	}
+
+	formatted := FormatSearchResultsBlock(query, resp.Provider, resp.Results)
+	fmt.Println(formatted)
+
+	// Inject into chat history so the LLM can see results on the next interaction
+	m.Messages = append(m.Messages, ChatMessage{
+		Content:   formatted,
+		FromUser:  false,
+		Timestamp: time.Now(),
+	})
+}
+
+// handleWebFetch fetches content from a URL and injects it into context.
+// Uses the full fallback chain: direct → Wayback Machine.
+func (m *Manager) handleWebFetch(rawURL string) {
+	cfg := m.Config.WebFetch
+	// Progress feedback before blocking network call
+	fmt.Printf("Fetching %s...\n", rawURL)
+
+	// Wrap with context timeout
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(cfg.TimeoutSeconds)*time.Second)
+	defer cancel()
+
+	// Use unified fallback chain
+	resp := FetchWithFallbacks(ctx, rawURL, cfg.MaxChars, cfg.TimeoutSeconds, cfg.AllowedRedirects)
+
+	// Guard: skip injecting empty/minimal content into LLM context.
+	// Symmetric with auto-fetch path (websearch -f N).
+	// Threshold 150 matches auto-fetch; needsFallback uses 80 for a different purpose.
+	charCount := utf8.RuneCountInString(resp.Content)
+	if resp.Source == "" && charCount < 150 {
+		m.Println(fmt.Sprintf("⚠ %s — all fetch methods returned minimal content (%d chars). This page may require JavaScript rendering.", rawURL, charCount))
+		return
+	}
+
+	// Build source label for display
+	sourceLabel := ""
+	switch resp.Source {
+	case "wayback":
+		sourceLabel = " (wayback archive)"
+	}
+
+	// Inject FULL content into chat history so the LLM can see it
+	formatted := FormatFetchResultsBlock(rawURL, resp.Content)
+	m.Messages = append(m.Messages, ChatMessage{
+		Content:   formatted,
+		FromUser:  false,
+		Timestamp: time.Now(),
+	})
+
+	// Print condensed status to terminal (full content stays in LLM context)
+	tokenEstimate := (charCount + 3) / 4
+	m.Println(fmt.Sprintf("✓ Fetched %d chars (≈%d tokens)%s from %s", charCount, tokenEstimate, sourceLabel, rawURL))
+}
+
+// --- web search command handlers below this line ---
+
+func (m *Manager) showMcpServers() {
+	servers := m.McpManager.GetServerInfo()
+	if len(servers) == 0 {
+		m.Println("No MCP servers configured.")
+		return
+	}
+
+	var b strings.Builder
+	b.WriteString("MCP Servers:\n")
+	totalTools := 0
+	totalTokens := 0
+	for _, s := range servers {
+		var icon string
+		switch s.Status {
+		case mcp.StatusHealthy:
+			icon = "✓"
+		case mcp.StatusUnhealthy:
+			if s.Config.Disabled {
+				icon = "○"
+			} else {
+				icon = "✗"
+			}
+		default:
+			icon = "○"
+		}
+		toolCount := len(s.Tools)
+		detail := fmt.Sprintf("(%s)", s.Transport)
+		if s.Status == mcp.StatusHealthy {
+			detail += fmt.Sprintf(" %d tools", toolCount)
+			totalTools += toolCount
+			tokenEst := 0
+			for _, t := range s.Tools {
+				tokenEst += (len(t.Name) + len(t.Description)) / 4
+			}
+			if tokenEst > 0 {
+				detail += fmt.Sprintf(" (~%d tokens)", tokenEst)
+				totalTokens += tokenEst
+			}
+		} else if s.ErrMsg != "" {
+			detail += fmt.Sprintf(" error: %s", s.ErrMsg)
+		}
+		fmt.Fprintf(&b, "  %s %s %s\n", icon, s.Name, detail)
+	}
+
+	active := 0
+	for _, s := range servers {
+		if s.Status == mcp.StatusHealthy {
+			active++
+		}
+	}
+	fmt.Fprintf(&b, "\nTotal: %d/%d active, %d tools (~%d tokens)", active, len(servers), totalTools, totalTokens)
+	m.Println(b.String())
+}
+
+func (m *Manager) showMcpTools(filter string) {
+	servers := m.McpManager.GetServerInfo()
+	var b strings.Builder
+	found := false
+	for _, s := range servers {
+		if s.Status != mcp.StatusHealthy {
+			continue
+		}
+		if filter != "" && !strings.EqualFold(s.Name, filter) {
+			continue
+		}
+		if found {
+			b.WriteString("\n")
+		}
+		found = true
+		fmt.Fprintf(&b, "--- %s ---\n", s.Name)
+		for _, t := range s.Tools {
+			fqName := "mcp__" + s.Name + "__" + t.Name
+			desc := t.Description
+			if desc == "" {
+				desc = "(no description)"
+			}
+			fmt.Fprintf(&b, "  %-40s %s\n", fqName, desc)
+		}
+	}
+	if !found {
+		if filter != "" {
+			m.Println(fmt.Sprintf("No tools found for server '%s'.", filter))
+		} else {
+			m.Println("No MCP tools available.")
+		}
+		return
+	}
+	m.Println(strings.TrimRight(b.String(), "\n"))
+}
+
+func (m *Manager) reloadMcp() {
+	if m.McpManager != nil {
+		m.McpManager.Shutdown()
+	}
+
+	mcpCfg, err := mcp.LoadConfig(mcp.DefaultConfigPath())
+	if err != nil {
+		m.Println(fmt.Sprintf("Error loading MCP config: %v", err))
+		m.McpManager = nil
+		m.McpRegistry = nil
+		return
+	}
+	if mcpCfg == nil || len(mcpCfg.MCPServers) == 0 {
+		m.Println("No MCP servers configured.")
+		m.McpManager = nil
+		m.McpRegistry = nil
+		return
+	}
+
+	mgr := mcp.NewMCPManager(mcpCfg)
+	if err := mgr.Init(); err != nil {
+		logger.Info("MCP reload: init had errors: %v", err)
+	}
+
+	servers := mgr.GetServerInfo()
+	activeServers := 0
+	totalTools := 0
+	for _, s := range servers {
+		if s.Status == mcp.StatusHealthy {
+			activeServers++
+			totalTools += len(s.Tools)
+		}
+	}
+
+	m.McpManager = mgr
+	m.McpRegistry = mcp.NewRegistry(mgr)
+	m.mcpDirty = true
+
+	m.Println(fmt.Sprintf("MCP reloaded: %d servers, %d tools", activeServers, totalTools))
+	logger.Info("MCP reloaded: %d servers, %d tools", activeServers, totalTools)
+}
+
+func (m *Manager) unloadMcp() {
+	if m.McpManager != nil {
+		m.McpManager.Shutdown()
+	}
+	m.McpManager = nil
+	m.McpRegistry = nil
+	m.McpToolDefCached = ""
+	m.mcpDirty = false
+	m.Println("MCP unloaded.")
+	logger.Info("MCP unloaded")
+}
+
+// reloadMcpIncremental is an alias for reloadMcp — full reconnect is sufficient for now.
+// Incremental diffing (add/remove/change per-server) can be added later if needed.
+func (m *Manager) reloadMcpIncremental() {
+	if m.McpManager == nil {
+		m.Println("No MCP manager initialized. Use /mcp load first.")
+		return
+	}
+
+	mcpCfg, err := mcp.LoadConfig(mcp.DefaultConfigPath())
+	if err != nil {
+		m.Println(fmt.Sprintf("Error loading MCP config: %v", err))
+		return
+	}
+	if mcpCfg == nil || len(mcpCfg.MCPServers) == 0 {
+		m.Println("No MCP servers configured in config.")
+		return
+	}
+
+	added, removed, restarted, kept, firstErr := m.McpManager.Reload(mcpCfg)
+	if firstErr != nil {
+		logger.Info("MCP incremental reload had errors: %v", firstErr)
+	}
+
+	m.McpRegistry = mcp.NewRegistry(m.McpManager)
+	m.mcpDirty = true
+
+	m.Println(fmt.Sprintf("MCP hot-reloaded: added=%d removed=%d restarted=%d kept=%d",
+		added, removed, restarted, kept))
+	logger.Info("MCP hot-reloaded: added=%d removed=%d restarted=%d kept=%d",
+		added, removed, restarted, kept)
 }
