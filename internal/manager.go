@@ -200,7 +200,7 @@ func (m *Manager) GetPrompt() string {
 
 		// Show model if current is different from expected
 		if currentModel != "" && currentModel != expectedModel {
-			prompt += " " + modelColor.Sprint("["+currentModel+"]")
+			prompt += modelColor.Sprint("["+currentModel+"] ")
 		}
 	}
 
