@@ -358,7 +358,7 @@ Watch for: ` + watchDesc
 				}
 				disabled := ""
 				if s.Disabled {
-					disabled = " [manual]"
+					disabled = "[manual]"
 				}
 				charInfo := ""
 				if s.Loaded {
@@ -803,9 +803,9 @@ func (m *Manager) listModels() {
 		for _, name := range availableModels {
 			config, exists := m.GetModelConfig(name)
 			if exists {
-				status := " [ ]"
+				status := "[ ]"
 				if currentDefault == name {
-					status = " [✓]"
+					status = "[✓]"
 				}
 				fmt.Printf("%s %s (%s: %s)\n", status, name, config.Provider, config.Model)
 			}
