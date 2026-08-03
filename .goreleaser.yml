@@ -8,27 +8,12 @@ before:
     - go generate ./...
 
 release:
-  prerelease: false
+  prerelease: "false"
 
 env:
   - CGO_ENABLED=0
 
 builds:
-  - id: linux
-    goos:
-      - linux
-    goarch:
-      - amd64
-      - arm
-    goarm:
-      - 7
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w -X github.com/debjan/tmuxai/internal.Version=v{{.Version}}
-      - -s -w -X github.com/debjan/tmuxai/internal.Commit={{.Commit}}
-      - -s -w -X github.com/debjan/tmuxai/internal.Date={{.Date}}
-
   - id: windows
     goos:
       - windows
