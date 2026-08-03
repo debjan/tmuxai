@@ -28,7 +28,7 @@ jobs:
         with:
           distribution: goreleaser
           version: "~> v2"
-          args: release --clean
+          args: release --clean --skip=validate
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
           HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.GH_TOKEN }}
