@@ -7,38 +7,15 @@ before:
     - go mod download
     - go generate ./...
 
-release:
-  prerelease: false
-
 env:
   - CGO_ENABLED=0
 
 builds:
-  - id: linux
+  - id: windows
     goos:
-      - linux
-      - freebsd
+      - windows
     goarch:
       - amd64
-      - arm64
-      - arm
-      - ppc64le
-      - s390x
-    goarm:
-      - 7
-    flags:
-      - -trimpath
-    ldflags:
-      - -s -w -X github.com/alvinunreal/tmuxai/internal.Version=v{{.Version}}
-      - -s -w -X github.com/alvinunreal/tmuxai/internal.Commit={{.Commit}}
-      - -s -w -X github.com/alvinunreal/tmuxai/internal.Date={{.Date}}
-
-  - id: osx
-    goos:
-      - darwin
-    goarch:
-      - amd64
-      - arm64
     flags:
       - -trimpath
     ldflags:
@@ -66,37 +43,3 @@ changelog:
   filters:
     exclude:
       - "^tasks:"
-
-brews:
-  - name: tmuxai
-    repository:
-      owner: alvinunreal
-      name: homebrew-tmuxai
-    commit_author:
-      name: alvinunreal
-      email: alvin@tmuxai.dev
-    directory: Formula
-    dependencies:
-      - name: tmux
-    homepage: https://tmuxai.dev/
-    description: AI-Powered, Non-Intrusive Terminal Assistant
-    test: |
-      system "tmuxai version"
-
-nfpms:
-  - file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
-    maintainer: alvinunreal
-    homepage: https://tmuxai.dev
-    description: AI-Powered, Non-Intrusive Terminal Assistant
-    license: "Apache-2.0"
-    formats:
-      - deb
-      - rpm
-      - apk
-    bindir: /usr/bin
-    section: utils
-    contents:
-      - src: ./LICENSE
-        dst: /usr/share/doc/tmuxai/copyright
-        file_info:
-          mode: 0644
