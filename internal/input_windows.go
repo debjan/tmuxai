@@ -25,9 +25,9 @@ func waitForInputPlatform(fd int, timeout time.Duration) (bool, error) {
 	}
 
 	switch result {
-	case windows.WAIT_OBJECT_0:
+	case uint32(windows.WAIT_OBJECT_0):
 		return true, nil
-	case windows.WAIT_TIMEOUT:
+	case uint32(windows.WAIT_TIMEOUT):
 		return false, nil
 	default:
 		return false, nil
