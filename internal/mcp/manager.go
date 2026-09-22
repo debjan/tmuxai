@@ -10,7 +10,6 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	mcpsdk "github.com/modelcontextprotocol/go-sdk/mcp"
@@ -123,7 +122,7 @@ func (m *MCPManager) initServer(name string, sc ServerConfig) error {
 	switch resolvedType {
 	case "stdio":
 		cmd = exec.Command(sc.Command, sc.Args...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+		configureProcessGroup(cmd)
 		if len(sc.Env) > 0 {
 			cmd.Env = append(cmd.Environ(), envSlice(sc.Env)...)
 		}
@@ -419,10 +418,7 @@ func (m *MCPManager) killProcessGroup(name string) {
 	if !ok || cmd == nil || cmd.Process == nil {
 		return
 	}
-	pgid, err := syscall.Getpgid(cmd.Process.Pid)
-	if err == nil {
-		_ = syscall.Kill(-pgid, syscall.SIGKILL)
-	}
+	killProcessGroup(cmd)
 	delete(m.cmds, name)
 }
 
